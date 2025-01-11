@@ -6,6 +6,6 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://your-railway-app-url.railway.app"
+    "VITE_API_URL": "https://grail-meter-production.up.railway.app"
   }
 }
