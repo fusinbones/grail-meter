@@ -8,9 +8,40 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Box } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 
 const TrendGraph = ({ title, trendData }) => {
+  if (!trendData || !Array.isArray(trendData) || trendData.length === 0) {
+    return (
+      <Box sx={{ 
+        width: '100%',
+        height: '350px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: 2,
+        bgcolor: 'background.paper',
+        borderRadius: 1,
+        p: 3
+      }}>
+        <Typography variant="h6" color="text.secondary">
+          No trend data available
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Try uploading a different photo or checking back later
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Ensure data is properly formatted
+  const formattedData = trendData.map(item => ({
+    month: item.date || item.month,
+    interest: typeof item.interest === 'number' ? item.interest : 
+             typeof item.volume === 'number' ? item.volume : 0
+  }));
+
   return (
     <Box sx={{ 
       width: '100%', 
@@ -18,11 +49,13 @@ const TrendGraph = ({ title, trendData }) => {
       minHeight: '350px',
       position: 'relative',
       px: 2,
-      pb: 4
+      pb: 4,
+      bgcolor: 'background.paper',
+      borderRadius: 1
     }}>
       <ResponsiveContainer>
         <LineChart
-          data={trendData}
+          data={formattedData}
           margin={{
             top: 20,
             right: 25,

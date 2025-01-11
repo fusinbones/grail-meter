@@ -199,9 +199,9 @@ const App = () => {
   const [error, setError] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
 
-  const API_URL = import.meta.env.PROD 
+  const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD 
     ? 'https://grail-meter-production.up.railway.app'
-    : 'http://localhost:8000';
+    : 'http://localhost:8000');
 
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
@@ -235,7 +235,7 @@ const App = () => {
 
     setLoading(true);
     setError(null);
-    setAnalysisResult(null); // Reset previous results
+    setAnalysisResult(null);
 
     try {
       const formData = new FormData();
@@ -243,21 +243,33 @@ const App = () => {
         formData.append('files', file);
       });
 
+      console.log('Sending request to:', API_URL);
+      
       const response = await fetch(`${API_URL}/analyze`, {
         method: 'POST',
         body: formData,
       });
 
-      const result = await response.json();
-      
       if (!response.ok) {
-        throw new Error(result.detail || 'Failed to analyze images');
+        const errorText = await response.text();
+        console.error('Server error:', errorText);
+        throw new Error(errorText || 'Failed to analyze images');
+      }
+
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        console.error('Failed to parse JSON response:', e);
+        throw new Error('Invalid response format from server');
       }
 
       if (!result || typeof result !== 'object') {
+        console.error('Invalid response:', result);
         throw new Error('Invalid response from server');
       }
 
+      console.log('Analysis result:', result);
       setAnalysisResult(result);
     } catch (err) {
       console.error('Analysis error:', err);
@@ -290,7 +302,7 @@ const App = () => {
         sx={{ 
           p: 4, 
           borderRadius: 3,
-          bgcolor: 'background.default',
+          backgroundColor: '#ffffff',
           border: '1px solid',
           borderColor: 'divider'
         }}
@@ -438,7 +450,7 @@ const App = () => {
             mt: 4,
             p: 4,
             borderRadius: 3,
-            bgcolor: 'background.default',
+            backgroundColor: '#ffffff',
             border: '1px solid',
             borderColor: 'divider',
             display: 'flex',
@@ -463,7 +475,9 @@ const App = () => {
           severity="error" 
           sx={{ 
             mt: 3,
-            borderRadius: 2
+            borderRadius: 2,
+            width: '100%',
+            backgroundColor: '#fff3f3'
           }}
           action={
             <Button 
@@ -488,7 +502,7 @@ const App = () => {
             align="center"
             sx={{ 
               fontWeight: 'medium',
-              color: 'primary.main',
+              color: '#1976d2',
               mb: 4
             }}
           >
@@ -501,7 +515,7 @@ const App = () => {
             sx={{ 
               p: 4,
               borderRadius: 3,
-              bgcolor: 'background.default',
+              backgroundColor: '#ffffff',
               border: '1px solid',
               borderColor: 'divider'
             }}
@@ -580,7 +594,7 @@ const App = () => {
                 mt: 4,
                 p: 4,
                 borderRadius: 3,
-                bgcolor: 'background.default',
+                backgroundColor: '#ffffff',
                 border: '1px solid',
                 borderColor: 'divider'
               }}
