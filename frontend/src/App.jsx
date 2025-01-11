@@ -196,32 +196,33 @@ const App = () => {
   const [error, setError] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
 
-  const handleImageUpload = (event) => {
+  const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
-    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
-    setError(null);
+    if (files.length > 0) {
+      // Validate file types
+      const validFiles = files.filter(file => 
+        file.type.startsWith('image/')
+      );
+      
+      if (validFiles.length === 0) {
+        setError('Please select valid image files (JPG, PNG, GIF)');
+        return;
+      }
+
+      setSelectedFiles(prevFiles => [...prevFiles, ...validFiles]);
+      event.target.value = ''; // Reset input
+    }
   };
 
-  const handleCameraCapture = (event) => {
-    const files = Array.from(event.target.files);
-    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
-    setError(null);
-  };
-
-  const handleDrop = (event) => {
-    event.preventDefault();
-    const files = Array.from(event.dataTransfer.files);
-    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
-    setError(null);
-  };
-
-  const handleDragOver = (event) => {
-    event.preventDefault();
+  const handleRemoveImage = (index) => {
+    setSelectedFiles(prevFiles => 
+      prevFiles.filter((_, i) => i !== index)
+    );
   };
 
   const handleAnalyze = async () => {
     if (selectedFiles.length === 0) {
-      setError('Please select at least one image');
+      setError('Please select at least one image to analyze');
       return;
     }
 
@@ -230,29 +231,27 @@ const App = () => {
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFiles[0]);
+      selectedFiles.forEach((file) => {
+        formData.append('files', file);
+      });
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
+      const response = await fetch('/api/analyze', {
         method: 'POST',
         body: formData,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to analyze image');
+        throw new Error('Failed to analyze images');
       }
 
-      const data = await response.json();
-      setAnalysisResult(data);
-      setSelectedFiles([]);
+      const result = await response.json();
+      setAnalysisResult(result);
+      setSelectedFiles([]); // Clear selected files after successful analysis
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'An error occurred during analysis');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleRemoveImage = (index) => {
-    setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   };
 
   return (
@@ -265,129 +264,99 @@ const App = () => {
           Upload your fashion item to get instant market analysis and trend insights
         </Typography>
         
-        <Paper
-          elevation={3}
-          sx={{
-            p: 3,
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(10px)'
-          }}
-        >
-          {/* Upload Box */}
-          <Box
-            sx={{
-              border: '2px dashed #ccc',
-              borderRadius: 2,
-              p: 3,
-              textAlign: 'center',
-              mb: 2,
-              cursor: 'pointer',
-              '&:hover': {
-                borderColor: '#666'
-              }
-            }}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-          >
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-              ref={fileInputRef}
-            />
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleCameraCapture}
-              style={{ display: 'none' }}
-              ref={cameraInputRef}
-            />
-            
-            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-              <ButtonGroup variant="contained">
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  startIcon={<CloudUploadIcon />}
-                >
-                  Upload Photos
-                </Button>
-                <Button
-                  onClick={() => cameraInputRef.current?.click()}
-                  startIcon={<PhotoCameraIcon />}
-                >
-                  Take Photo
-                </Button>
-              </ButtonGroup>
-            </Box>
-            
-            <Typography variant="body2" color="textSecondary">
-              Supported formats: JPG, PNG, GIF
-            </Typography>
-            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-              Or drag and drop your images here
-            </Typography>
-          </Box>
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <ButtonGroup variant="contained" sx={{ mb: 2 }}>
+              <Button
+                component="label"
+                startIcon={<CloudUploadIcon />}
+              >
+                Upload Photos
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                />
+              </Button>
+              <Button
+                component="label"
+                startIcon={<PhotoCameraIcon />}
+              >
+                Take Photo
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                />
+              </Button>
+            </ButtonGroup>
 
-          {/* Selected Images Preview */}
-          {selectedFiles.length > 0 && (
-            <Grid container spacing={2} sx={{ mb: 2 }}>
-              {Array.from(selectedFiles).map((file, index) => (
-                <Grid item xs={6} sm={4} md={3} key={index}>
-                  <Paper 
-                    elevation={2}
-                    sx={{ 
-                      position: 'relative',
-                      paddingTop: '100%', // 1:1 Aspect ratio
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src={URL.createObjectURL(file)}
-                      alt={`Preview ${index + 1}`}
-                      sx={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                    <IconButton
-                      size="small"
-                      onClick={() => handleRemoveImage(index)}
-                      sx={{
-                        position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        bgcolor: 'rgba(255, 255, 255, 0.8)',
-                        '&:hover': {
-                          bgcolor: 'rgba(255, 255, 255, 0.9)',
-                        }
-                      }}
-                    >
-                      <CloseIcon fontSize="small" />
-                    </IconButton>
-                  </Paper>
+            {/* Image Preview Grid */}
+            {selectedFiles.length > 0 && (
+              <Box sx={{ width: '100%', mt: 2 }}>
+                <Grid container spacing={2}>
+                  {Array.from(selectedFiles).map((file, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                      <Paper
+                        elevation={2}
+                        sx={{
+                          position: 'relative',
+                          paddingTop: '100%',
+                          borderRadius: 1,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <Box
+                          component="img"
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${index + 1}`}
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'contain',
+                            bgcolor: 'background.default'
+                          }}
+                        />
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRemoveImage(index)}
+                          sx={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            bgcolor: 'rgba(255, 255, 255, 0.9)',
+                            '&:hover': {
+                              bgcolor: 'rgba(255, 255, 255, 1)'
+                            }
+                          }}
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Paper>
+                    </Grid>
+                  ))}
                 </Grid>
-              ))}
-            </Grid>
-          )}
-          
-          {/* Analyze Button */}
-          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-            <Button
-              variant="contained"
-              onClick={handleAnalyze}
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : null}
-            >
-              {loading ? 'Analyzing...' : 'Analyze Images'}
-            </Button>
+
+                {/* Analyze Button */}
+                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                  <Button
+                    variant="contained"
+                    onClick={handleAnalyze}
+                    disabled={loading}
+                    startIcon={loading ? <CircularProgress size={20} /> : null}
+                  >
+                    {loading ? 'Analyzing...' : 'Analyze Images'}
+                  </Button>
+                </Box>
+              </Box>
+            )}
           </Box>
         </Paper>
 
@@ -491,11 +460,10 @@ const App = () => {
                   {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
                     <Box sx={{ 
                       flex: 1,
-                      minHeight: 350,
-                      maxHeight: 400,
+                      minHeight: 400,
+                      maxHeight: 450,
                       width: '100%',
                       position: 'relative',
-                      pb: 2
                     }}>
                       <TrendGraph 
                         title={`${analysisResult.brand} ${analysisResult.category}`}

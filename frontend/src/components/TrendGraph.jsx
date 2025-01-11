@@ -15,33 +15,35 @@ const TrendGraph = ({ title, trendData }) => {
     <Box sx={{ 
       width: '100%', 
       height: '100%',
-      minHeight: '300px',
+      minHeight: '350px',
       position: 'relative',
-      px: 2
+      px: 2,
+      pb: 4
     }}>
       <ResponsiveContainer>
         <LineChart
           data={trendData}
           margin={{
             top: 20,
-            right: 30,
-            left: 20,
-            bottom: 30,
+            right: 25,
+            left: 25,
+            bottom: 50,
           }}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="month" 
             tick={{ fontSize: 12 }}
-            tickMargin={12}
-            height={50}
+            tickMargin={15}
+            height={60}
+            interval={0}
           />
           <YAxis 
             tick={{ fontSize: 12 }}
             domain={[0, 100]}
             tickFormatter={(value) => `${value}%`}
-            width={50}
-            tickMargin={8}
+            width={55}
+            tickMargin={10}
           />
           <Tooltip 
             formatter={(value) => [`${value}%`, 'Interest']}
