@@ -297,8 +297,8 @@ const App = () => {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
+    <Container maxWidth="lg" sx={{ my: 4, pb: 4 }}>
+      <Box sx={{ mb: 4 }}>
         <Typography variant="h4" component="h1" gutterBottom align="center">
           Grail Meter
         </Typography>
@@ -374,7 +374,7 @@ const App = () => {
                   <Box
                     sx={{
                       width: '100%',
-                      height: 400,
+                      height: { xs: 300, md: 400 },
                       borderRadius: 2,
                       overflow: 'hidden',
                       display: 'flex',
@@ -383,13 +383,13 @@ const App = () => {
                       bgcolor: 'rgba(0,0,0,0.03)'
                     }}
                   >
-                    {selectedFiles.length > 0 && (
+                    {selectedFiles[0] && (
                       <img
                         src={URL.createObjectURL(selectedFiles[0])}
                         alt="Uploaded item"
                         style={{
-                          maxWidth: '100%',
-                          maxHeight: '100%',
+                          width: '100%',
+                          height: '100%',
                           objectFit: 'contain'
                         }}
                       />
@@ -440,10 +440,10 @@ const App = () => {
             <Grid container spacing={3}>
               {/* Trend Graph */}
               <Grid item xs={12} md={7}>
-                <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
+                <Paper elevation={3} sx={{ p: 3, height: '100%', minHeight: { xs: 400, md: 500 } }}>
                   <Typography variant="h6" gutterBottom>Market Trend</Typography>
                   {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
-                    <Box sx={{ height: 300 }}>
+                    <Box sx={{ width: '100%', height: 'calc(100% - 40px)' }}>
                       <TrendGraph 
                         title={`${analysisResult.brand} ${analysisResult.category}`}
                         trendData={analysisResult.trend_data}
@@ -451,7 +451,7 @@ const App = () => {
                     </Box>
                   ) : (
                     <Box sx={{ 
-                      height: 300, 
+                      height: 'calc(100% - 40px)', 
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
@@ -471,25 +471,58 @@ const App = () => {
 
               {/* SEO Keywords */}
               <Grid item xs={12} md={5}>
-                <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
+                <Paper elevation={3} sx={{ p: 3, height: '100%', minHeight: { xs: 400, md: 500 } }}>
                   <Typography variant="h6" gutterBottom>SEO Keywords</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                    {analysisResult.seo_keywords && analysisResult.seo_keywords.map((keyword, index) => (
-                      <Chip 
-                        key={index}
-                        label={keyword}
-                        color={index === 0 ? "primary" : "default"}
-                        sx={{ 
-                          fontSize: '1rem',
-                          py: 2.5,
-                          bgcolor: index === 0 ? 'primary.main' : 'rgba(0,0,0,0.08)',
-                          color: index === 0 ? 'white' : 'text.primary',
-                          '&:hover': {
-                            bgcolor: index === 0 ? 'primary.dark' : 'rgba(0,0,0,0.12)'
-                          }
-                        }}
-                      />
-                    ))}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {analysisResult.seo_keywords && 
+                      [...analysisResult.seo_keywords]
+                        .sort((a, b) => b.volume - a.volume)
+                        .map((keywordObj, index) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 1
+                            }}
+                          >
+                            <Box sx={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between',
+                              alignItems: 'center'
+                            }}>
+                              <Typography 
+                                variant="body1" 
+                                sx={{ 
+                                  fontWeight: index === 0 ? 500 : 400,
+                                  color: index === 0 ? 'primary.main' : 'text.primary'
+                                }}
+                              >
+                                {keywordObj.keyword}
+                              </Typography>
+                              <Typography 
+                                variant="body2" 
+                                color="textSecondary"
+                              >
+                                {keywordObj.volume.toLocaleString()} searches
+                              </Typography>
+                            </Box>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={(keywordObj.volume / 1000) * 100}
+                              sx={{ 
+                                height: 6,
+                                borderRadius: 3,
+                                backgroundColor: 'rgba(0,0,0,0.05)',
+                                '& .MuiLinearProgress-bar': {
+                                  borderRadius: 3,
+                                  backgroundColor: index === 0 ? 'primary.main' : 'primary.light'
+                                }
+                              }}
+                            />
+                          </Box>
+                        ))
+                    }
                   </Box>
                 </Paper>
               </Grid>
