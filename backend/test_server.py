@@ -197,70 +197,82 @@ def get_trend_data(search_term):
             requests_args={'verify': True}
         )
         
-        # Clean search term
+        # Clean search term and prepare fallback terms
         search_term = search_term.strip()
         if not search_term or len(search_term) < 2:
             logging.warning(f"[PyTrends] Invalid search term: {search_term}")
             return {'trend_data': [], 'keywords_data': []}
-            
-        # Build payload
-        try:
-            logging.info(f"[PyTrends] Building payload for: {search_term}")
-            pytrends.build_payload(
-                kw_list=[search_term],
-                cat=0,
-                timeframe='today 12-m',
-                geo='US'
-            )
-        except Exception as e:
-            logging.error(f"[PyTrends] Failed to build payload: {str(e)}", exc_info=True)
-            return {'trend_data': [], 'keywords_data': []}
         
-        # Get interest over time
-        try:
-            logging.info("[PyTrends] Fetching interest over time data")
-            interest_df = pytrends.interest_over_time()
+        # Create list of search terms from specific to broad
+        terms = []
+        # Original term
+        terms.append(search_term)
+        # Remove brand if present
+        if ' ' in search_term:
+            terms.append(search_term.split(' ', 1)[1])
+        # Add general category
+        if 'hoodie' in search_term.lower():
+            terms.append('hoodie fashion')
+        elif 'jacket' in search_term.lower():
+            terms.append('jacket fashion')
+        elif 'shirt' in search_term.lower():
+            terms.append('shirt fashion')
+        elif 'pants' in search_term.lower():
+            terms.append('pants fashion')
+        else:
+            terms.append('streetwear fashion')
             
-            if interest_df is None or interest_df.empty:
-                logging.error("[PyTrends] No interest over time data found")
-                return {'trend_data': [], 'keywords_data': []}
+        logging.info(f"[PyTrends] Search terms from specific to broad: {terms}")
+        
+        # Try each term until we get data
+        for term in terms:
+            try:
+                logging.info(f"[PyTrends] Trying search term: {term}")
+                pytrends.build_payload(
+                    kw_list=[term],
+                    cat=0,
+                    timeframe='today 12-m',
+                    geo='US'
+                )
                 
-            trend_data = [{
-                'date': date.strftime('%Y-%m-%d'),
-                'volume': int(row[search_term])
-            } for date, row in interest_df.iterrows() 
-            if search_term in row and pd.notna(row[search_term])]
-            
-            logging.info(f"[PyTrends] Got {len(trend_data)} trend points")
-            
-        except Exception as e:
-            logging.error(f"[PyTrends] Failed to get interest over time: {str(e)}", exc_info=True)
-            return {'trend_data': [], 'keywords_data': []}
-        
-        # Get related queries
-        try:
-            logging.info("[PyTrends] Fetching related queries")
-            related = pytrends.related_queries()
-            
-            keywords_data = []
-            if related and search_term in related:
-                top_df = related[search_term].get('top')
-                if isinstance(top_df, pd.DataFrame) and not top_df.empty:
-                    keywords_data = [{
-                        'keyword': str(row['query']),
-                        'volume': int(row['value'])
-                    } for _, row in top_df.iterrows()]
+                # Get interest over time
+                interest_df = pytrends.interest_over_time()
+                
+                if interest_df is not None and not interest_df.empty:
+                    logging.info(f"[PyTrends] Found data for term: {term}")
+                    trend_data = [{
+                        'date': date.strftime('%Y-%m-%d'),
+                        'volume': int(row[term])
+                    } for date, row in interest_df.iterrows() 
+                    if term in row and pd.notna(row[term])]
                     
-            logging.info(f"[PyTrends] Got {len(keywords_data)} related keywords")
-            
-            return {
-                'trend_data': trend_data,
-                'keywords_data': keywords_data
-            }
-            
-        except Exception as e:
-            logging.error(f"[PyTrends] Failed to get related queries: {str(e)}", exc_info=True)
-            return {'trend_data': trend_data, 'keywords_data': []}
+                    # Get related queries for this successful term
+                    related = pytrends.related_queries()
+                    keywords_data = []
+                    if related and term in related:
+                        top_df = related[term].get('top')
+                        if isinstance(top_df, pd.DataFrame) and not top_df.empty:
+                            keywords_data = [{
+                                'keyword': str(row['query']),
+                                'volume': int(row['value'])
+                            } for _, row in top_df.iterrows()]
+                    
+                    logging.info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
+                    return {
+                        'trend_data': trend_data,
+                        'keywords_data': keywords_data
+                    }
+                else:
+                    logging.warning(f"[PyTrends] No data found for term: {term}")
+                    continue
+                    
+            except Exception as e:
+                logging.error(f"[PyTrends] Error with term {term}: {str(e)}", exc_info=True)
+                continue
+        
+        # If we get here, no terms worked
+        logging.error("[PyTrends] No data found for any search terms")
+        return {'trend_data': [], 'keywords_data': []}
             
     except Exception as e:
         logging.error(f"[PyTrends] Critical error: {str(e)}", exc_info=True)
