@@ -252,43 +252,29 @@ const App = () => {
         method: 'POST',
         body: formData,
       });
-
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error:', errorText);
-        throw new Error(errorText || 'Failed to analyze images');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-
-      let result;
-      try {
-        const text = await response.text();
-        console.log('Raw response:', text);
-        result = JSON.parse(text);
-      } catch (e) {
-        console.error('Failed to parse JSON response:', e);
-        throw new Error('Invalid response format from server');
-      }
-
+      
+      const result = await response.json();
+      console.log('Raw analysis result:', result);
+      
+      // Ensure we have the correct data structure
       if (!result || typeof result !== 'object') {
-        console.error('Invalid response:', result);
-        throw new Error('Invalid response from server');
+        throw new Error('Invalid response format');
       }
-
-      // Ensure trend_data is in the correct format
-      if (result.trend_data) {
-        result.trend_data = Array.isArray(result.trend_data) ? result.trend_data : [];
-      } else {
-        result.trend_data = [];
+      
+      // Transform keywords if needed
+      if (result.keywords && Array.isArray(result.keywords)) {
+        result.seo_keywords = result.keywords.map(keyword => {
+          if (typeof keyword === 'string') {
+            return { keyword, volume: 0 };
+          }
+          return keyword;
+        });
       }
-
-      // Transform seo_keywords to simple strings if they're objects
-      if (result.seo_keywords && Array.isArray(result.seo_keywords)) {
-        result.seo_keywords = result.seo_keywords.map(kw => 
-          typeof kw === 'object' && kw !== null ? kw.keyword : String(kw)
-        );
-      }
-
-      console.log('Processed analysis result:', result);
+      
       setAnalysisResult(result);
     } catch (err) {
       console.error('Analysis error:', err);
@@ -649,21 +635,16 @@ const App = () => {
               borderColor: 'divider'
             }}
           >
-            <Grid container spacing={{ xs: 2, sm: 4 }}>
+            <Grid container spacing={2}>
               {/* Trend Graph */}
               <Grid item xs={12} md={8}>
-                <Typography variant="h6" gutterBottom sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1,
-                  fontSize: { xs: '1.1rem', sm: '1.25rem' }
-                }}>
-                  <TrendingUpIcon color="primary" />
-                  Market Trend Analysis
-                </Typography>
                 <Box sx={{ 
                   height: { xs: '300px', sm: '400px' },
-                  transition: 'height 0.3s ease'
+                  bgcolor: 'background.paper',
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  overflow: 'hidden'
                 }}>
                   <TrendGraph trendData={analysisResult.trend_data} />
                 </Box>
@@ -671,125 +652,100 @@ const App = () => {
 
               {/* SEO Keywords */}
               <Grid item xs={12} md={4}>
-                <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="h6" gutterBottom sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 1,
-                    fontSize: { xs: '1.1rem', sm: '1.25rem' }
-                  }}>
-                    <SearchIcon color="primary" />
-                    Search Volume Analysis
-                  </Typography>
+                <Box sx={{ 
+                  height: { xs: 'auto', md: '400px' },
+                  bgcolor: 'background.paper',
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}>
+                  <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="h6" sx={{ fontSize: '1rem' }}>
+                      Search Volume
+                    </Typography>
+                  </Box>
+                  
                   {analysisResult.seo_keywords && analysisResult.seo_keywords.length > 0 ? (
+                    <List sx={{ 
+                      flex: 1,
+                      overflow: 'auto',
+                      py: 0
+                    }}>
+                      {analysisResult.seo_keywords
+                        .map(keyword => ({
+                          keyword: typeof keyword === 'object' ? keyword.keyword : keyword,
+                          volume: typeof keyword === 'object' ? keyword.volume || 0 : 0
+                        }))
+                        .sort((a, b) => b.volume - a.volume)
+                        .map((item, index) => (
+                          <ListItem
+                            key={index}
+                            divider={index < analysisResult.seo_keywords.length - 1}
+                            sx={{
+                              px: 2,
+                              py: 1.5,
+                            }}
+                          >
+                            <Box sx={{ width: '100%' }}>
+                              <Box sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'space-between',
+                                mb: 1
+                              }}>
+                                <Typography 
+                                  variant="body1" 
+                                  sx={{ 
+                                    fontWeight: 'medium',
+                                    color: 'text.primary'
+                                  }}
+                                >
+                                  {item.keyword}
+                                </Typography>
+                                <Typography 
+                                  variant="body2"
+                                  sx={{ 
+                                    color: 'primary.main',
+                                    fontWeight: 'medium',
+                                    ml: 2
+                                  }}
+                                >
+                                  {item.volume.toLocaleString()}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ 
+                                width: '100%',
+                                height: 4,
+                                bgcolor: 'grey.100',
+                                borderRadius: 2,
+                                overflow: 'hidden'
+                              }}>
+                                <Box
+                                  sx={{
+                                    width: `${(item.volume / Math.max(...analysisResult.seo_keywords.map(k => typeof k === 'object' ? k.volume || 0 : 0))) * 100}%`,
+                                    height: '100%',
+                                    bgcolor: 'primary.main',
+                                    transition: 'width 0.5s ease-in-out'
+                                  }}
+                                />
+                              </Box>
+                            </Box>
+                          </ListItem>
+                        ))}
+                    </List>
+                  ) : (
                     <Box sx={{ 
                       flex: 1,
                       display: 'flex',
-                      flexDirection: 'column',
-                      height: { xs: 'auto', md: '400px' },
-                      minHeight: { xs: '300px', sm: '400px' },
-                      overflow: 'hidden',
-                      bgcolor: 'background.paper',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider',
-                      p: { xs: 1.5, sm: 2 }
-                    }}>
-                      <List sx={{ 
-                        flex: 1,
-                        overflow: 'auto',
-                        '& .MuiListItem-root': {
-                          transition: 'all 0.2s ease-in-out',
-                          '&:hover': {
-                            bgcolor: 'action.hover',
-                            transform: { xs: 'none', sm: 'translateX(8px)' }
-                          }
-                        }
-                      }}>
-                        {[...analysisResult.seo_keywords]
-                          .sort((a, b) => (b.volume || 0) - (a.volume || 0))
-                          .map((keyword, index) => {
-                            const volume = typeof keyword === 'object' ? keyword.volume : 0;
-                            const maxVolume = Math.max(...analysisResult.seo_keywords.map(k => k.volume || 0));
-                            const percentage = (volume / maxVolume) * 100;
-                            
-                            return (
-                              <ListItem 
-                                key={index}
-                                divider={index < analysisResult.seo_keywords.length - 1}
-                                sx={{
-                                  flexDirection: 'column',
-                                  alignItems: 'stretch',
-                                  py: { xs: 1.5, sm: 2 },
-                                  px: { xs: 1, sm: 2 }
-                                }}
-                              >
-                                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                                  <Typography 
-                                    variant="body1" 
-                                    sx={{ 
-                                      fontWeight: 'medium',
-                                      fontSize: { xs: '0.9rem', sm: '1rem' }
-                                    }}
-                                  >
-                                    {typeof keyword === 'object' ? keyword.keyword : keyword}
-                                  </Typography>
-                                  <Typography 
-                                    variant="body2" 
-                                    color="primary.main"
-                                    sx={{ 
-                                      ml: 'auto',
-                                      pl: 2,
-                                      fontWeight: 'medium',
-                                      fontSize: { xs: '0.9rem', sm: '1rem' }
-                                    }}
-                                  >
-                                    {volume.toLocaleString()}
-                                  </Typography>
-                                </Box>
-                                <Box sx={{ 
-                                  mt: 1,
-                                  height: { xs: 6, sm: 8 },
-                                  bgcolor: 'grey.100',
-                                  borderRadius: 4,
-                                  overflow: 'hidden',
-                                  position: 'relative'
-                                }}>
-                                  <Box
-                                    sx={{
-                                      width: `${percentage}%`,
-                                      height: '100%',
-                                      bgcolor: 'primary.main',
-                                      borderRadius: 4,
-                                      transition: 'width 0.5s ease-in-out'
-                                    }}
-                                  />
-                                </Box>
-                              </ListItem>
-                            );
-                          })}
-                      </List>
-                    </Box>
-                  ) : (
-                    <Box sx={{ 
-                      height: { xs: '300px', sm: '400px' },
-                      display: 'flex',
-                      flexDirection: 'column',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 2,
-                      bgcolor: 'background.paper',
-                      borderRadius: 1,
-                      border: '1px solid',
-                      borderColor: 'divider'
+                      p: 3
                     }}>
-                      <SearchIcon sx={{ fontSize: { xs: 36, sm: 48 }, color: 'text.disabled' }} />
-                      <Typography 
-                        color="text.secondary" 
-                        align="center"
-                        sx={{ px: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
-                      >
-                        No keyword data available
+                      <Typography color="text.secondary">
+                        No search volume data available
                       </Typography>
                     </Box>
                   )}

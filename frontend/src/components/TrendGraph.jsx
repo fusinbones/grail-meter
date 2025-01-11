@@ -17,7 +17,6 @@ const TrendGraph = ({ title, trendData }) => {
       <Box sx={{ 
         width: '100%',
         height: '100%',
-        minHeight: '400px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -38,40 +37,29 @@ const TrendGraph = ({ title, trendData }) => {
   }
 
   // Transform the data to ensure it's in the correct format
-  const formattedData = trendData.map((item, index) => {
-    // Handle both possible data structures
-    if (typeof item === 'object' && item !== null) {
-      return {
-        name: item.date || item.month || `Month ${index + 1}`,
-        value: typeof item.interest === 'number' ? item.interest :
-               typeof item.volume === 'number' ? item.volume : 0
-      };
-    }
-    // Handle primitive values
-    return {
-      name: `Month ${index + 1}`,
-      value: typeof item === 'number' ? item : 0
-    };
-  });
+  const formattedData = trendData.map((item, index) => ({
+    name: typeof item === 'object' ? (item.date || item.month || `Month ${index + 1}`) : `Month ${index + 1}`,
+    value: typeof item === 'object' ? (item.interest || item.volume || 0) : (typeof item === 'number' ? item : 0)
+  }));
 
   return (
     <Box sx={{ 
       width: '100%',
-      height: '400px',
+      height: '100%',
       position: 'relative',
       backgroundColor: '#ffffff',
       borderRadius: 1,
       display: 'flex',
       flexDirection: 'column'
     }}>
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer>
         <LineChart
           data={formattedData}
           margin={{
-            top: 20,
-            right: 25,
-            left: 25,
-            bottom: 30,
+            top: 10,
+            right: 10,
+            left: 0,
+            bottom: 0,
           }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
