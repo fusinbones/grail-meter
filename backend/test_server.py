@@ -311,8 +311,9 @@ if __name__ == "__main__":
         # Clean up any existing processes first
         cleanup()
         # Start the server
-        uvicorn.run(app, host="127.0.0.1", port=8000)
+        port = int(os.getenv('PORT', 8000))
+        uvicorn.run(app, host="0.0.0.0", port=port)
     except Exception as e:
-        logging.error(f"Server error: {e}")
+        logging.error(f"Error starting server: {e}")
     finally:
         cleanup()
