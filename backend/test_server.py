@@ -160,41 +160,62 @@ def analyze_with_gemini(image_path: str) -> str:
             "error": str(e)
         })
 
-def generate_synthetic_trend_data():
-    """Generate synthetic trend data for the last 12 months."""
-    import random
-    from datetime import datetime, timedelta
-    
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=365)
-    dates = []
-    current = start_date
-    
-    # Generate dates for each month
-    while current <= end_date:
-        dates.append(current)
-        # Move to next month
-        if current.month == 12:
-            current = current.replace(year=current.year + 1, month=1)
-        else:
-            current = current.replace(month=current.month + 1)
-    
-    # Generate trend data with some randomization but maintaining a pattern
-    base_volume = random.randint(40, 60)
-    trend_data = []
-    
-    for date in dates:
-        # Add some seasonality and randomness
-        season_factor = 1 + 0.3 * math.sin(2 * math.pi * (date.month - 1) / 12)  # Seasonal variation
-        random_factor = random.uniform(0.8, 1.2)  # Random noise
-        volume = int(base_volume * season_factor * random_factor)
+def get_trend_data(search_term):
+    """Get real trend data using PyTrends."""
+    try:
+        from pytrends.request import TrendReq
+        import pandas as pd
+        from datetime import datetime, timedelta
+
+        # Initialize PyTrends
+        pytrends = TrendReq(hl='en-US', tz=360)
         
-        trend_data.append({
-            'date': date.strftime('%Y-%m-%d'),
-            'volume': max(0, min(100, volume))  # Ensure volume is between 0 and 100
-        })
-    
-    return trend_data
+        # Build the payload
+        kw_list = [search_term]
+        timeframe = 'today 12-m'  # Last 12 months
+        
+        # Make the request
+        pytrends.build_payload(kw_list, cat=0, timeframe=timeframe, geo='', gprop='')
+        
+        # Get interest over time
+        interest_over_time_df = pytrends.interest_over_time()
+        
+        if interest_over_time_df.empty:
+            logging.warning(f"No trend data found for {search_term}")
+            return []
+            
+        # Get related queries for search volume
+        related_queries = pytrends.related_queries()
+        top_queries = related_queries[search_term]['top']
+        
+        # Transform the data
+        trend_data = []
+        for date, row in interest_over_time_df.iterrows():
+            trend_data.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'volume': int(row[search_term])
+            })
+            
+        # Get related keywords with their volumes
+        keywords_data = []
+        if top_queries is not None and not top_queries.empty:
+            for _, row in top_queries.iterrows():
+                keywords_data.append({
+                    'keyword': row['query'],
+                    'volume': int(row['value'])
+                })
+                
+        return {
+            'trend_data': trend_data,
+            'keywords_data': keywords_data
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting trend data: {str(e)}")
+        return {
+            'trend_data': [],
+            'keywords_data': []
+        }
 
 @app.get("/")
 def read_root():
@@ -245,26 +266,29 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                         logging.error(f"Failed to parse Gemini response: {str(e)}")
                         raise HTTPException(status_code=500, detail="Failed to parse analysis results")
                     
-                    # Generate trend data
-                    trend_data = []
+                    # Get real trend data
+                    trend_data = {}
                     if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
                         search_term = f"{analysis_json['brand']} {analysis_json['category']}"
-                        trend_data = generate_synthetic_trend_data()
+                        trend_data = get_trend_data(search_term)
+                        
+                        if trend_data['keywords_data']:
+                            analysis_json['seo_keywords'] = trend_data['keywords_data']
                     
                     # Create the response
                     response = {
                         **analysis_json,  # Include all fields from analysis
-                        "trend_data": trend_data
+                        "trend_data": trend_data.get('trend_data', [])
                     }
                     
                     return response
                     
                 except Exception as e:
-                    logging.error(f"Error in Gemini analysis: {str(e)}")
+                    logging.error(f"Error in analysis: {str(e)}")
                     raise HTTPException(status_code=500, detail=f"Error analyzing image: {str(e)}")
                 
             except HTTPException:
-                raise  # Re-raise HTTP exceptions
+                raise
             except Exception as e:
                 logging.error(f"Error processing file: {str(e)}")
                 raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
@@ -277,7 +301,7 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                     logging.error(f"Error deleting temporary file: {str(e)}")
     
     except HTTPException:
-        raise  # Re-raise HTTP exceptions
+        raise
     except Exception as e:
         logging.error(f"Error in analyze_image_route: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
@@ -372,10 +396,10 @@ async def upload_file(files: List[UploadFile] = File(...)):
                     logging.info(f"Successfully processed {len(trend_data_list)} trend data points")
                 else:
                     logging.info("No valid trend data points, generating synthetic data")
-                    trend_data_list = generate_synthetic_trend_data()
+                    trend_data_list = []
             else:
                 logging.warning("No trend data available for the search term, generating synthetic data")
-                trend_data_list = generate_synthetic_trend_data()
+                trend_data_list = []
             
             # Try to get related queries for keyword suggestions
             try:
