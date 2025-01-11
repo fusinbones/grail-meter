@@ -546,7 +546,7 @@ const App = () => {
                   gap: 3
                 }}>
                   {Object.entries(analysisResult)
-                    .filter(([key]) => key !== 'trend_data')
+                    .filter(([key]) => key !== 'trend_data' && key !== 'seo_keywords')
                     .map(([key, value]) => (
                       <Box key={key}>
                         <Typography 
@@ -571,6 +571,85 @@ const App = () => {
               </Grid>
             </Grid>
           </Paper>
+
+          {/* SEO Keywords */}
+          {analysisResult?.seo_keywords?.length > 0 ? (
+            <List sx={{ 
+              flex: 1,
+              overflow: 'auto',
+              py: 0
+            }}>
+              {analysisResult.seo_keywords
+                .sort((a, b) => b.volume - a.volume)
+                .map((item, index) => (
+                  <ListItem
+                    key={index}
+                    divider={index < analysisResult.seo_keywords.length - 1}
+                    sx={{
+                      px: 2,
+                      py: 1.5,
+                    }}
+                  >
+                    <Box sx={{ width: '100%' }}>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        mb: 1
+                      }}>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: 'medium',
+                            color: 'text.primary'
+                          }}
+                        >
+                          {item.keyword}
+                        </Typography>
+                        <Typography 
+                          variant="body2"
+                          sx={{ 
+                            color: 'primary.main',
+                            fontWeight: 'medium',
+                            ml: 2
+                          }}
+                        >
+                          {item.volume.toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ 
+                        width: '100%',
+                        height: 4,
+                        bgcolor: 'grey.100',
+                        borderRadius: 2,
+                        overflow: 'hidden'
+                      }}>
+                        <Box
+                          sx={{
+                            width: `${(item.volume / Math.max(...analysisResult.seo_keywords.map(k => k.volume || 0))) * 100}%`,
+                            height: '100%',
+                            bgcolor: 'primary.main',
+                            transition: 'width 0.5s ease-in-out'
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  </ListItem>
+                ))}
+            </List>
+          ) : (
+            <Box sx={{ 
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              p: 3
+            }}>
+              <Typography color="text.secondary">
+                No search volume data available
+              </Typography>
+            </Box>
+          )}
 
           {/* Trend Graph */}
           {analysisResult.trend_data && analysisResult.trend_data.length > 0 && (
