@@ -15,6 +15,8 @@ import re
 from dotenv import load_dotenv
 import signal
 from tempfile import NamedTemporaryFile
+import requests
+from bs4 import BeautifulSoup
 
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
@@ -182,8 +184,39 @@ def get_gemini_fallback_data(search_term):
         'keywords_data': []
     }
 
+def get_free_proxies():
+    """Get a list of free proxies from free-proxy-list.net."""
+    try:
+        url = "https://free-proxy-list.net/"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        proxies = []
+        # Find the table with proxies
+        proxy_table = soup.find('table')
+        if proxy_table:
+            for row in proxy_table.find_all('tr')[1:]:  # Skip header row
+                columns = row.find_all('td')
+                if len(columns) >= 7:  # Ensure row has enough columns
+                    ip = columns[0].text.strip()
+                    port = columns[1].text.strip()
+                    https = columns[6].text.strip()
+                    country = columns[3].text.strip()
+                    
+                    # Only use HTTPS proxies from reliable countries
+                    reliable_countries = {'US', 'CA', 'GB', 'DE', 'FR', 'NL', 'JP', 'KR', 'SG'}
+                    if https == 'yes' and country in reliable_countries:
+                        proxy = f'http://{ip}:{port}'
+                        proxies.append(proxy)
+                        
+        logging.info(f"[Proxy] Found {len(proxies)} potential proxies")
+        return proxies
+    except Exception as e:
+        logging.error(f"[Proxy] Error fetching proxy list: {str(e)}")
+        return []
+
 def get_trend_data(search_term):
-    """Get trend data using PyTrends with proxy support."""
+    """Get trend data using PyTrends with dynamic proxy support."""
     try:
         logging.info(f"[PyTrends] Starting trend data fetch for: {search_term}")
         
@@ -223,18 +256,24 @@ def get_trend_data(search_term):
             'DNT': '1',
         }
 
-        # Free proxy list from a reliable source
-        proxies = [
-            'http://proxy.scrapingbee.com:8886',
-            'http://proxy.webshare.io:80',
-            'http://proxy.tinssoft.com:80',
-            'http://proxy.zenrows.com:80',
-        ]
+        # Get fresh list of proxies
+        proxies = get_free_proxies()
+        if not proxies:
+            logging.warning("[PyTrends] No proxies available, trying without proxy")
+            proxies = [None]  # Try without proxy as last resort
         
         # Try each proxy until we get data
         for proxy in proxies:
             try:
-                logging.info(f"[PyTrends] Trying proxy: {proxy}")
+                if proxy:
+                    logging.info(f"[PyTrends] Trying proxy: {proxy}")
+                    proxy_config = {
+                        'http': proxy,
+                        'https': proxy
+                    }
+                else:
+                    logging.info("[PyTrends] Trying without proxy")
+                    proxy_config = {}
                 
                 # Initialize PyTrends with proxy settings
                 pytrends = TrendReq(
@@ -247,10 +286,7 @@ def get_trend_data(search_term):
                         'verify': True,
                         'headers': custom_headers,
                         'allow_redirects': True,
-                        'proxies': {
-                            'http': proxy,
-                            'https': proxy
-                        }
+                        'proxies': proxy_config
                     }
                 )
                 
@@ -309,7 +345,8 @@ def get_trend_data(search_term):
                         continue
                         
             except Exception as e:
-                logging.error(f"[PyTrends] Error with proxy {proxy}: {str(e)}", exc_info=True)
+                proxy_msg = f"proxy {proxy}" if proxy else "without proxy"
+                logging.error(f"[PyTrends] Error {proxy_msg}: {str(e)}", exc_info=True)
                 continue
         
         # If we get here, no proxies or terms worked
