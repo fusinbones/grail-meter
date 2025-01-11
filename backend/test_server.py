@@ -79,17 +79,10 @@ def clean_json_string(json_str: str) -> str:
             # Parse it to validate and return
             parsed = json.loads(json_str)
             
-            # Add volume data to keywords if present
-            if 'seo_keywords' in parsed and isinstance(parsed['seo_keywords'], list):
-                keywords_with_volume = []
-                for i, keyword in enumerate(parsed['seo_keywords']):
-                    # Generate synthetic volume data that decreases with position
-                    volume = 1000 - (i * 100)  # First keyword has highest volume
-                    keywords_with_volume.append({
-                        'keyword': keyword,
-                        'volume': max(volume, 100)  # Ensure minimum volume of 100
-                    })
-                parsed['seo_keywords'] = keywords_with_volume
+            # Ensure seo_keywords is an array if present
+            if 'seo_keywords' in parsed:
+                if not isinstance(parsed['seo_keywords'], list):
+                    parsed['seo_keywords'] = []
             
             return json.dumps(parsed)
             
@@ -311,6 +304,11 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                         raise HTTPException(status_code=500, detail="Failed to parse analysis results")
                     
                     # Get real trend data
+                    trend_data = {
+                        'trend_data': [],
+                        'keywords_data': []
+                    }
+                    
                     if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
                         search_term = f"{analysis_json['brand']} {analysis_json['category']}"
                         logging.info(f"Getting trend data for search term: {search_term}")
@@ -320,22 +318,22 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                         search_term = search_term.strip()
                         
                         trend_data = get_trend_data(search_term)
-                        
-                        if trend_data['keywords_data']:
-                            analysis_json['seo_keywords'] = trend_data['keywords_data']
-                            logging.info(f"Updated SEO keywords with {len(trend_data['keywords_data'])} items")
+                        logging.info(f"Received trend data: {trend_data}")
                     else:
-                        logging.warning("Brand or category is Unknown, skipping trend data")
-                        trend_data = {
-                            'trend_data': [],
-                            'keywords_data': []
-                        }
+                        logging.warning("Brand or category is Unknown, using Gemini fallback")
+                        search_term = analysis_json.get('category', 'fashion item')
+                        trend_data = get_gemini_fallback_data(search_term)
+                    
+                    # Update keywords if we have them
+                    if trend_data['keywords_data']:
+                        analysis_json['seo_keywords'] = trend_data['keywords_data']
+                        logging.info(f"Updated SEO keywords with {len(trend_data['keywords_data'])} items")
                     
                     # Create the response
                     response = {
                         **analysis_json,  # Include all fields from analysis
                         "trend_data": trend_data['trend_data'],
-                        "keywords": trend_data['keywords_data']
+                        "seo_keywords": trend_data['keywords_data']  # Use consistent key name
                     }
                     
                     logging.info("Successfully created response with trend data and analysis")
