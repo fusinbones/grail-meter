@@ -575,8 +575,9 @@ const App = () => {
                   flexDirection: 'column',
                   gap: 3
                 }}>
+                  {/* Basic Details */}
                   {Object.entries(analysisResult)
-                    .filter(([key]) => key !== 'trend_data')
+                    .filter(([key]) => !['trend_data', 'seo_keywords'].includes(key))
                     .map(([key, value]) => (
                       <Box key={key}>
                         <Typography 
@@ -584,7 +585,7 @@ const App = () => {
                           color="text.secondary"
                           sx={{ mb: 1, textTransform: 'capitalize' }}
                         >
-                          {key}
+                          {key.replace(/_/g, ' ')}
                         </Typography>
                         <Typography 
                           variant="h6"
@@ -597,6 +598,29 @@ const App = () => {
                         </Typography>
                       </Box>
                     ))}
+                    
+                  {/* SEO Keywords */}
+                  {analysisResult.seo_keywords && analysisResult.seo_keywords.length > 0 && (
+                    <Box>
+                      <Typography 
+                        variant="subtitle1" 
+                        color="text.secondary"
+                        sx={{ mb: 1, textTransform: 'capitalize' }}
+                      >
+                        SEO Keywords
+                      </Typography>
+                      <List dense sx={{ bgcolor: 'background.paper' }}>
+                        {analysisResult.seo_keywords.map((keyword, index) => (
+                          <ListItem key={index}>
+                            <ListItemText
+                              primary={typeof keyword === 'object' ? keyword.keyword : keyword}
+                              secondary={typeof keyword === 'object' ? `Volume: ${keyword.volume}` : null}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    </Box>
+                  )}
                 </Box>
               </Grid>
             </Grid>
