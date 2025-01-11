@@ -28,13 +28,12 @@ logging.basicConfig(filename='server.log', level=logging.INFO,
 app = FastAPI()
 
 # Configure CORS
-origins = os.getenv('CORS_ORIGINS', 'http://localhost:5173,https://grail-meter.vercel.app').split(',')
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Allows all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Load environment variables
@@ -201,11 +200,17 @@ def test_endpoint():
     return {"message": "Test endpoint is working"}
 
 @app.post("/analyze")
-async def analyze_image_route(file: UploadFile = File(description="Image file to analyze")):
+async def analyze_image_route(files: List[UploadFile] = File(...)):
     """
-    Analyze an uploaded image using Google's Gemini Vision model.
+    Analyze uploaded images using Google's Gemini Vision model.
     """
     try:
+        if not files:
+            raise HTTPException(status_code=400, detail="No files uploaded")
+
+        # Process the first image (for now)
+        file = files[0]
+        
         # Validate file type
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
@@ -240,7 +245,7 @@ async def analyze_image_route(file: UploadFile = File(description="Image file to
                 
             except Exception as e:
                 logging.error(f"Error processing file: {str(e)}")
-                raise HTTPException(status_code=500, detail=str(e))
+                raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
             finally:
                 # Clean up the temporary file
                 try:
@@ -251,7 +256,7 @@ async def analyze_image_route(file: UploadFile = File(description="Image file to
     
     except Exception as e:
         logging.error(f"Error in analyze_image_route: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Error in analyze_image_route: {str(e)}")
 
 @app.post("/upload")
 async def upload_file(files: List[UploadFile] = File(...)):
