@@ -11,8 +11,11 @@ import {
 import { Box, Typography } from '@mui/material';
 
 const TrendGraph = ({ title, trendData }) => {
+  console.log('[TrendGraph] Received trend data:', trendData);
+
   // Early return for invalid data
   if (!trendData || !Array.isArray(trendData) || trendData.length === 0) {
+    console.log('[TrendGraph] No valid trend data, showing empty state');
     return (
       <Box sx={{ 
         width: '100%',
@@ -37,10 +40,16 @@ const TrendGraph = ({ title, trendData }) => {
   }
 
   // Transform the data to ensure it's in the correct format
-  const formattedData = trendData.map((item, index) => ({
-    name: typeof item === 'object' ? (item.date || item.month || `Month ${index + 1}`) : `Month ${index + 1}`,
-    value: typeof item === 'object' ? (item.interest || item.volume || 0) : (typeof item === 'number' ? item : 0)
-  }));
+  const formattedData = trendData.map((item, index) => {
+    const dataPoint = {
+      name: typeof item === 'object' ? (item.date || item.month || `Month ${index + 1}`) : `Month ${index + 1}`,
+      value: typeof item === 'object' ? (item.volume || 0) : (typeof item === 'number' ? item : 0)
+    };
+    console.log('[TrendGraph] Formatted data point:', dataPoint);
+    return dataPoint;
+  });
+
+  console.log('[TrendGraph] Final formatted data:', formattedData);
 
   return (
     <Box sx={{ 

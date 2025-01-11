@@ -33,8 +33,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",  # Local development
         "http://localhost:4173",  # Local preview
-        "https://grail-meter.vercel.app",  # Production
-        "https://grail-meter-production.up.railway.app",  # Backend URL
+        "http://localhost:3000",  # Local development alternative
+        "https://grail-meter.vercel.app",  # Production frontend
+        "https://grail-meter-production.up.railway.app",  # Production backend
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -166,18 +167,42 @@ def get_trend_data(search_term):
         from pytrends.request import TrendReq
         import pandas as pd
         from datetime import datetime, timedelta
+        import os
 
         logging.info(f"[PyTrends] Initializing for search term: {search_term}")
         
-        # Initialize PyTrends with more robust settings
-        pytrends = TrendReq(
-            hl='en-US',
-            tz=360,
-            timeout=(30,30),  # Increased timeout
-            retries=3,        # More retries
-            backoff_factor=1.5  # Longer backoff between retries
-        )
+        # Check if we're in production
+        is_production = os.getenv('RAILWAY_ENVIRONMENT') == 'production'
         
+        # Use different settings for production
+        if is_production:
+            pytrends = TrendReq(
+                hl='en-US',
+                tz=360,
+                timeout=(60,60),  # Much longer timeout for Railway
+                retries=5,        # More retries
+                backoff_factor=2,  # Longer backoff
+                proxies=['https://httpbin.org/ip']  # Use proxy to avoid rate limits
+            )
+            logging.info("[PyTrends] Using production configuration")
+        else:
+            pytrends = TrendReq(
+                hl='en-US',
+                tz=360,
+                timeout=(30,30),
+                retries=3,
+                backoff_factor=1.5
+            )
+        
+        # Clean and validate search term
+        search_term = search_term.strip()
+        if not search_term or len(search_term) < 2:
+            logging.warning(f"[PyTrends] Invalid search term: {search_term}")
+            return {
+                'trend_data': [],
+                'keywords_data': []
+            }
+            
         # Build the payload with proper parameters
         kw_list = [search_term]
         timeframe = 'today 12-m'  # Last 12 months
@@ -186,14 +211,29 @@ def get_trend_data(search_term):
         try:
             pytrends.build_payload(
                 kw_list=kw_list,
-                cat=0,  # All categories
+                cat=0,
                 timeframe=timeframe,
-                geo='US',  # Focus on US market
-                gprop=''  # Web search
+                geo='US',
+                gprop=''
             )
         except Exception as e:
             logging.error(f"[PyTrends] Error building payload: {str(e)}", exc_info=True)
-            raise Exception(f"Failed to build PyTrends payload: {str(e)}")
+            # Try one more time with a different timeframe in production
+            if is_production:
+                try:
+                    logging.info("[PyTrends] Retrying with shorter timeframe")
+                    pytrends.build_payload(
+                        kw_list=kw_list,
+                        cat=0,
+                        timeframe='today 3-m',  # Try shorter timeframe
+                        geo='US',
+                        gprop=''
+                    )
+                except Exception as e:
+                    logging.error(f"[PyTrends] Second attempt failed: {str(e)}", exc_info=True)
+                    raise
+            else:
+                raise
             
         # Get interest over time with error handling
         logging.info("[PyTrends] Fetching interest over time data")

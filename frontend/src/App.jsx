@@ -258,7 +258,7 @@ const App = () => {
       }
       
       const result = await response.json();
-      console.log('Raw analysis result:', result);
+      console.log('[App] Raw analysis result:', result);
       
       // Ensure we have the correct data structure
       if (!result || typeof result !== 'object') {
@@ -268,14 +268,20 @@ const App = () => {
       // Transform the data structure if needed
       const transformedResult = {
         ...result,
-        trend_data: Array.isArray(result.trend_data) ? result.trend_data : [],
+        trend_data: Array.isArray(result.trend_data) ? result.trend_data.map(point => ({
+          date: point.date,
+          volume: parseInt(point.volume) || 0
+        })) : [],
         seo_keywords: Array.isArray(result.keywords) ? result.keywords.map(kw => ({
           keyword: typeof kw === 'object' ? kw.keyword : kw,
-          volume: typeof kw === 'object' ? kw.volume : 0
+          volume: parseInt(typeof kw === 'object' ? kw.volume : 0) || 0
         })) : []
       };
       
-      console.log('Transformed result:', transformedResult);
+      console.log('[App] Transformed result:', transformedResult);
+      console.log('[App] Trend data length:', transformedResult.trend_data.length);
+      console.log('[App] Keywords length:', transformedResult.seo_keywords.length);
+      
       setAnalysisResult(transformedResult);
     } catch (err) {
       console.error('Analysis error:', err);
@@ -645,8 +651,10 @@ const App = () => {
                   borderRadius: 1,
                   border: '1px solid',
                   borderColor: 'divider',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  p: 2
                 }}>
+                  {console.log('[App] Rendering TrendGraph with data:', analysisResult?.trend_data)}
                   <TrendGraph trendData={analysisResult?.trend_data || []} />
                 </Box>
               </Grid>

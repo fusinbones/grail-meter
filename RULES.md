@@ -7,6 +7,7 @@
    - Gemini API for image analysis
 3. All search volumes must show actual numbers from PyTrends
 4. Trend graph must always display real historical data
+5. ONLY focus on the Vercel and Railway deployments
 
 ## UI/UX Rules
 1. Grid layout must be responsive:
@@ -29,6 +30,25 @@
 2. Gemini:
    - Proper image analysis
    - Accurate brand and category detection
+
+## PyTrends Integration Rules
+1. Always use proper error handling:
+   - Try/catch around each PyTrends operation
+   - Validate all returned data
+   - Log errors with full stack traces
+2. Configuration requirements:
+   - Minimum 30 second timeout
+   - At least 3 retries
+   - Use backoff between retries
+   - Focus on US market for reliable data
+3. Data quality:
+   - Never return synthetic data
+   - Validate all data types before conversion
+   - Handle missing data gracefully
+4. Logging requirements:
+   - Use [PyTrends] prefix
+   - Log all operations and their results
+   - Include data counts and sizes
 
 ## Deployment Rules
 1. Always check deployment status after pushing changes
