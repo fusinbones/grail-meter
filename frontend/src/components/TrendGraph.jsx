@@ -11,41 +11,45 @@ import {
 
 const TrendGraph = ({ title, trendData }) => {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart
-        data={trendData}
-        margin={{
-          top: 5,
-          right: 5,
-          left: 5,
-          bottom: 25, // Increased bottom margin
-        }}
-      >
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          dataKey="month" 
-          tick={{ fontSize: 12 }}
-          dy={10} // Move labels down
-        />
-        <YAxis 
-          tick={{ fontSize: 12 }}
-          domain={[0, 100]}
-          tickFormatter={(value) => `${value}%`}
-        />
-        <Tooltip 
-          formatter={(value) => [`${value}%`, 'Interest']}
-          labelFormatter={(label) => `Month: ${label}`}
-        />
-        <Line
-          type="monotone"
-          dataKey="interest"
-          stroke="#2196f3"
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 8 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <ResponsiveContainer width="100%" height="90%">
+        <LineChart
+          data={trendData}
+          margin={{
+            top: 10,
+            right: 30,
+            left: 20,
+            bottom: 30,
+          }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis 
+            dataKey="month" 
+            tick={{ fontSize: 12 }}
+            tickMargin={10}
+            height={40}
+          />
+          <YAxis 
+            tick={{ fontSize: 12 }}
+            domain={[0, 100]}
+            tickFormatter={(value) => `${value}%`}
+            width={50}
+          />
+          <Tooltip 
+            formatter={(value) => [`${value}%`, 'Interest']}
+            labelFormatter={(label) => `Month: ${label}`}
+          />
+          <Line
+            type="monotone"
+            dataKey="interest"
+            stroke="#2196f3"
+            strokeWidth={2}
+            dot={false}
+            activeDot={{ r: 8 }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 };
 

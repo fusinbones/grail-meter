@@ -482,16 +482,26 @@ const App = () => {
             <Grid container spacing={3}>
               {/* Trend Graph */}
               <Grid item xs={12} md={7}>
-                <Paper elevation={3} sx={{ p: 3, height: '100%', minHeight: { xs: 400, md: 500 } }}>
+                <Paper 
+                  elevation={3} 
+                  sx={{ 
+                    p: 3, 
+                    height: '100%', 
+                    minHeight: { xs: 400, md: 500 },
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
                   <Typography variant="h6" gutterBottom>Market Trend</Typography>
                   {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
                     <Box sx={{ 
-                      width: '100%', 
-                      height: 'calc(100% - 40px)',
+                      flexGrow: 1,
+                      width: '100%',
+                      height: '100%',
+                      minHeight: '350px',
                       '& .recharts-wrapper': {
-                        marginBottom: '20px',
-                        '& .recharts-xAxis .recharts-cartesian-axis-tick-value': {
-                          transform: 'translateY(-5px)'
+                        '& .recharts-surface': {
+                          overflow: 'visible'
                         }
                       }
                     }}>
@@ -502,7 +512,7 @@ const App = () => {
                     </Box>
                   ) : (
                     <Box sx={{ 
-                      height: 'calc(100% - 40px)', 
+                      flexGrow: 1,
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
