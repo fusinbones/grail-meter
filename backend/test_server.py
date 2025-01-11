@@ -13,6 +13,7 @@ import io
 import re
 from dotenv import load_dotenv
 import signal
+from tempfile import NamedTemporaryFile
 
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
