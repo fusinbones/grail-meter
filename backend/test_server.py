@@ -96,8 +96,9 @@ def analyze_with_gemini(image_path: str) -> str:
                 img = img.convert('RGB')
                 logging.info("Converted image to RGB mode")
 
-            # Use the correct model name
-            model = genai.GenerativeModel('gemini-pro-vision')
+            # Use the new model name
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            logging.info("Created model instance with gemini-1.5-flash")
             
             # Prepare the prompt
             prompt = """Analyze this image and provide a JSON response with the following fields:
@@ -109,6 +110,7 @@ def analyze_with_gemini(image_path: str) -> str:
             Format as valid JSON only, no other text."""
 
             # Generate the analysis
+            logging.info("Sending request to Gemini API...")
             response = model.generate_content([prompt, img])
             if not response or not response.text:
                 raise Exception("Empty response from Gemini API")
