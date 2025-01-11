@@ -167,25 +167,40 @@ def get_trend_data(search_term):
         import pandas as pd
         from datetime import datetime, timedelta
 
+        logging.info(f"Initializing PyTrends for search term: {search_term}")
+        
         # Initialize PyTrends
-        pytrends = TrendReq(hl='en-US', tz=360)
+        pytrends = TrendReq(hl='en-US', tz=360, timeout=(10,25), retries=2, backoff_factor=0.1)
         
         # Build the payload
         kw_list = [search_term]
         timeframe = 'today 12-m'  # Last 12 months
         
-        # Make the request
+        logging.info(f"Building payload for PyTrends with search term: {search_term}")
         pytrends.build_payload(kw_list, cat=0, timeframe=timeframe, geo='', gprop='')
         
         # Get interest over time
+        logging.info("Fetching interest over time data")
         interest_over_time_df = pytrends.interest_over_time()
         
         if interest_over_time_df.empty:
             logging.warning(f"No trend data found for {search_term}")
-            return []
+            return {
+                'trend_data': [],
+                'keywords_data': []
+            }
             
         # Get related queries for search volume
+        logging.info("Fetching related queries data")
         related_queries = pytrends.related_queries()
+        
+        if not related_queries or search_term not in related_queries:
+            logging.warning(f"No related queries found for {search_term}")
+            return {
+                'trend_data': list(interest_over_time_df[search_term].items()),
+                'keywords_data': []
+            }
+            
         top_queries = related_queries[search_term]['top']
         
         # Transform the data
@@ -205,13 +220,14 @@ def get_trend_data(search_term):
                     'volume': int(row['value'])
                 })
                 
+        logging.info(f"Successfully retrieved trend data with {len(trend_data)} points and {len(keywords_data)} keywords")
         return {
             'trend_data': trend_data,
             'keywords_data': keywords_data
         }
         
     except Exception as e:
-        logging.error(f"Error getting trend data: {str(e)}")
+        logging.error(f"Error getting trend data: {str(e)}", exc_info=True)
         return {
             'trend_data': [],
             'keywords_data': []
@@ -262,18 +278,27 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                     
                     try:
                         analysis_json = json.loads(clean_json_string(analysis_text))
+                        logging.info(f"Parsed analysis result: {analysis_json}")
                     except json.JSONDecodeError as e:
                         logging.error(f"Failed to parse Gemini response: {str(e)}")
                         raise HTTPException(status_code=500, detail="Failed to parse analysis results")
                     
                     # Get real trend data
-                    trend_data = {}
+                    trend_data = {
+                        'trend_data': [],
+                        'keywords_data': []
+                    }
+                    
                     if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
                         search_term = f"{analysis_json['brand']} {analysis_json['category']}"
+                        logging.info(f"Getting trend data for search term: {search_term}")
                         trend_data = get_trend_data(search_term)
                         
                         if trend_data['keywords_data']:
                             analysis_json['seo_keywords'] = trend_data['keywords_data']
+                            logging.info(f"Updated SEO keywords with {len(trend_data['keywords_data'])} items")
+                    else:
+                        logging.warning("Brand or category is Unknown, skipping trend data")
                     
                     # Create the response
                     response = {
@@ -281,16 +306,17 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                         "trend_data": trend_data.get('trend_data', [])
                     }
                     
+                    logging.info("Successfully created response with trend data and analysis")
                     return response
                     
                 except Exception as e:
-                    logging.error(f"Error in analysis: {str(e)}")
+                    logging.error(f"Error in analysis: {str(e)}", exc_info=True)
                     raise HTTPException(status_code=500, detail=f"Error analyzing image: {str(e)}")
                 
             except HTTPException:
                 raise
             except Exception as e:
-                logging.error(f"Error processing file: {str(e)}")
+                logging.error(f"Error processing file: {str(e)}", exc_info=True)
                 raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
             finally:
                 # Clean up the temporary file
@@ -303,7 +329,7 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Error in analyze_image_route: {str(e)}")
+        logging.error(f"Error in analyze_image_route: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @app.post("/upload")
