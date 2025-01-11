@@ -16,7 +16,8 @@ const TrendGraph = ({ title, trendData }) => {
     return (
       <Box sx={{ 
         width: '100%',
-        height: '350px',
+        height: '100%',
+        minHeight: '400px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -55,43 +56,47 @@ const TrendGraph = ({ title, trendData }) => {
 
   return (
     <Box sx={{ 
-      width: '100%', 
-      height: '100%',
-      minHeight: '350px',
+      width: '100%',
+      height: '400px',
       position: 'relative',
-      px: 2,
-      pb: 4,
       backgroundColor: '#ffffff',
-      borderRadius: 1
+      borderRadius: 1,
+      display: 'flex',
+      flexDirection: 'column'
     }}>
-      <ResponsiveContainer>
+      <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={formattedData}
           margin={{
             top: 20,
             right: 25,
             left: 25,
-            bottom: 50,
+            bottom: 30,
           }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis 
             dataKey="name" 
-            tick={{ fontSize: 12 }}
-            tickMargin={15}
-            height={60}
-            interval={0}
+            tick={{ fontSize: 12, fill: '#666' }}
+            tickMargin={10}
+            stroke="#e0e0e0"
           />
           <YAxis 
-            tick={{ fontSize: 12 }}
+            tick={{ fontSize: 12, fill: '#666' }}
             domain={[0, 'auto']}
             tickFormatter={(value) => `${value}`}
-            width={55}
             tickMargin={10}
+            stroke="#e0e0e0"
           />
           <Tooltip 
             formatter={(value) => [value, 'Interest']}
             labelFormatter={(label) => `${label}`}
+            contentStyle={{
+              backgroundColor: '#fff',
+              border: '1px solid #e0e0e0',
+              borderRadius: '4px',
+              padding: '8px'
+            }}
           />
           <Line
             type="monotone"
@@ -99,7 +104,7 @@ const TrendGraph = ({ title, trendData }) => {
             stroke="#2196f3"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 6 }}
+            activeDot={{ r: 6, fill: '#2196f3', stroke: '#fff', strokeWidth: 2 }}
           />
         </LineChart>
       </ResponsiveContainer>

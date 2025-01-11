@@ -646,7 +646,8 @@ const App = () => {
                       bgcolor: 'background.paper',
                       borderRadius: 1,
                       border: '1px solid',
-                      borderColor: 'divider'
+                      borderColor: 'divider',
+                      p: 2
                     }}>
                       <List sx={{ 
                         flex: 1,
@@ -671,52 +672,57 @@ const App = () => {
                                 key={index}
                                 divider={index < analysisResult.seo_keywords.length - 1}
                                 sx={{
-                                  position: 'relative',
-                                  zIndex: 1,
-                                  overflow: 'hidden',
-                                  '&::after': {
-                                    content: '""',
-                                    position: 'absolute',
-                                    left: 0,
-                                    top: 0,
-                                    height: '100%',
-                                    width: `${percentage}%`,
-                                    bgcolor: 'primary.light',
-                                    opacity: 0.1,
-                                    zIndex: -1
-                                  }
+                                  flexDirection: 'column',
+                                  alignItems: 'stretch',
+                                  py: 2
                                 }}
                               >
-                                <Box sx={{ width: '100%' }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                    <KeywordIcon fontSize="small" color="primary" />
-                                    <Typography variant="body1" sx={{ fontWeight: 'medium', flex: 1 }}>
-                                      {typeof keyword === 'object' ? keyword.keyword : keyword}
-                                    </Typography>
-                                  </Box>
-                                  {typeof keyword === 'object' && keyword.volume && (
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                  <KeywordIcon fontSize="small" color="primary" />
+                                  <Typography variant="body1" sx={{ fontWeight: 'medium', flex: 1 }}>
+                                    {typeof keyword === 'object' ? keyword.keyword : keyword}
+                                  </Typography>
+                                  <Typography 
+                                    variant="caption" 
+                                    sx={{ 
+                                      color: 'primary.main',
+                                      bgcolor: 'primary.light',
+                                      px: 1,
+                                      py: 0.5,
+                                      borderRadius: 1,
+                                      opacity: 0.9
+                                    }}
+                                  >
+                                    Rank #{index + 1}
+                                  </Typography>
+                                </Box>
+                                {typeof keyword === 'object' && keyword.volume && (
+                                  <Box sx={{ mt: 1 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                                       <BarChartIcon fontSize="small" color="action" />
                                       <Typography variant="body2" color="text.secondary">
-                                        Volume: {keyword.volume.toLocaleString()}
-                                      </Typography>
-                                      <Typography 
-                                        variant="caption" 
-                                        sx={{ 
-                                          ml: 'auto',
-                                          color: 'primary.main',
-                                          bgcolor: 'primary.light',
-                                          px: 1,
-                                          py: 0.5,
-                                          borderRadius: 1,
-                                          opacity: 0.9
-                                        }}
-                                      >
-                                        Rank #{index + 1}
+                                        Monthly Volume: {keyword.volume.toLocaleString()}
                                       </Typography>
                                     </Box>
-                                  )}
-                                </Box>
+                                    <Box sx={{ 
+                                      mt: 1,
+                                      height: 8,
+                                      bgcolor: 'grey.100',
+                                      borderRadius: 4,
+                                      overflow: 'hidden'
+                                    }}>
+                                      <Box
+                                        sx={{
+                                          width: `${percentage}%`,
+                                          height: '100%',
+                                          bgcolor: 'primary.main',
+                                          borderRadius: 4,
+                                          transition: 'width 0.5s ease-in-out'
+                                        }}
+                                      />
+                                    </Box>
+                                  </Box>
+                                )}
                               </ListItem>
                             );
                           })}
