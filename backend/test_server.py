@@ -18,20 +18,16 @@ import signal
 logging.basicConfig(filename='server.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Initialize FastAPI app
 app = FastAPI()
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Local development
-        "http://localhost:4173",  # Local preview
-        "https://grail-meter.vercel.app",  # Production
-        "https://grail-meter-production.up.railway.app",  # Backend URL
-    ],
+    allow_origins=["http://localhost:3000"],  # Frontend URL
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Load environment variables
