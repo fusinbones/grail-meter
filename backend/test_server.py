@@ -160,49 +160,134 @@ def analyze_with_gemini(image_path: str) -> str:
             "error": str(e)
         })
 
-def generate_synthetic_trend_data():
-    """Generate synthetic trend data for the last 12 months."""
-    import random
-    from datetime import datetime, timedelta
-    
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=365)
-    dates = []
-    current = start_date
-    
-    # Generate dates for each month
-    while current <= end_date:
-        dates.append(current)
-        # Move to next month
-        if current.month == 12:
-            current = current.replace(year=current.year + 1, month=1)
-        else:
-            current = current.replace(month=current.month + 1)
-    
-    # Generate trend data with some randomization but maintaining a pattern
-    base_volume = random.randint(40, 60)
-    trend_data = []
-    
-    for date in dates:
-        # Add some seasonality and randomness
-        season_factor = 1 + 0.3 * math.sin(2 * math.pi * (date.month - 1) / 12)  # Seasonal variation
-        random_factor = random.uniform(0.8, 1.2)  # Random noise
-        volume = int(base_volume * season_factor * random_factor)
+def get_trend_data(search_term):
+    """Get real trend data using PyTrends."""
+    try:
+        from pytrends.request import TrendReq
+        import pandas as pd
+        from datetime import datetime, timedelta
+        import os
+
+        logging.info(f"[PyTrends] Initializing for search term: {search_term}")
         
-        trend_data.append({
-            'date': date.strftime('%Y-%m-%d'),
-            'volume': max(0, min(100, volume))  # Ensure volume is between 0 and 100
-        })
-    
-    return trend_data
+        # Initialize PyTrends with robust settings
+        pytrends = TrendReq(
+            hl='en-US',
+            tz=360,
+            timeout=(60,60),  # Long timeout
+            retries=5,        # More retries
+            backoff_factor=2  # Longer backoff
+        )
+        
+        # Clean and validate search term
+        search_term = search_term.strip()
+        if not search_term or len(search_term) < 2:
+            logging.warning(f"[PyTrends] Invalid search term: {search_term}")
+            return {
+                'trend_data': [],
+                'keywords_data': []
+            }
+            
+        # Build the payload with proper parameters
+        kw_list = [search_term]
+        timeframe = 'today 12-m'  # Last 12 months
+        
+        logging.info(f"[PyTrends] Building payload with search term: {search_term}")
+        try:
+            pytrends.build_payload(
+                kw_list=kw_list,
+                cat=0,
+                timeframe=timeframe,
+                geo='US',
+                gprop=''
+            )
+            logging.info(f"[PyTrends] Payload built successfully for {search_term}")
+        except Exception as e:
+            logging.error(f"[PyTrends] Error building payload: {str(e)}", exc_info=True)
+            try:
+                logging.info("[PyTrends] Retrying with shorter timeframe")
+                pytrends.build_payload(
+                    kw_list=kw_list,
+                    cat=0,
+                    timeframe='today 3-m',  # Try shorter timeframe
+                    geo='US',
+                    gprop=''
+                )
+                logging.info(f"[PyTrends] Second payload built successfully for {search_term}")
+            except Exception as e:
+                logging.error(f"[PyTrends] Second attempt failed: {str(e)}", exc_info=True)
+                return {
+                    'trend_data': [],
+                    'keywords_data': []
+                }
+            
+        # Get interest over time with error handling
+        logging.info("[PyTrends] Fetching interest over time data")
+        try:
+            interest_over_time_df = pytrends.interest_over_time()
+            if interest_over_time_df is None or interest_over_time_df.empty:
+                logging.warning(f"[PyTrends] No trend data found for {search_term}")
+                return {
+                    'trend_data': [],
+                    'keywords_data': []
+                }
+            logging.info(f"[PyTrends] Retrieved {len(interest_over_time_df)} data points")
+            
+            # Transform the trend data
+            trend_data = []
+            for date, row in interest_over_time_df.iterrows():
+                if search_term in row and pd.notna(row[search_term]):
+                    trend_data.append({
+                        'date': date.strftime('%Y-%m-%d'),
+                        'volume': int(row[search_term])
+                    })
+            logging.info(f"[PyTrends] Transformed {len(trend_data)} trend data points")
+            
+            # Get related keywords with volumes
+            logging.info("[PyTrends] Fetching related queries")
+            related_queries = pytrends.related_queries()
+            keywords_data = []
+            
+            if related_queries and search_term in related_queries:
+                top_queries = related_queries[search_term].get('top')
+                if isinstance(top_queries, pd.DataFrame) and not top_queries.empty:
+                    for _, row in top_queries.iterrows():
+                        try:
+                            keywords_data.append({
+                                'keyword': str(row['query']),
+                                'volume': int(row['value'])
+                            })
+                        except (ValueError, KeyError) as e:
+                            logging.error(f"[PyTrends] Error processing keyword: {str(e)}")
+                            continue
+                            
+            logging.info(f"[PyTrends] Processed {len(keywords_data)} keywords")
+            return {
+                'trend_data': trend_data,
+                'keywords_data': keywords_data
+            }
+            
+        except Exception as e:
+            logging.error(f"[PyTrends] Error getting trend data: {str(e)}", exc_info=True)
+            return {
+                'trend_data': [],
+                'keywords_data': []
+            }
+            
+    except Exception as e:
+        logging.error(f"[PyTrends] Critical error: {str(e)}", exc_info=True)
+        return {
+            'trend_data': [],
+            'keywords_data': []
+        }
 
 @app.get("/")
-def read_root():
-    return {"message": "Server is running"}
+async def read_root():
+    return {"message": "Welcome to the Grail Meter API"}
 
 @app.get("/test")
-def test_endpoint():
-    return {"message": "Test endpoint is working"}
+async def test_endpoint():
+    return {"message": "API is working"}
 
 @app.post("/analyze")
 async def analyze_image_route(files: List[UploadFile] = File(...)):
@@ -241,32 +326,50 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                     
                     try:
                         analysis_json = json.loads(clean_json_string(analysis_text))
+                        logging.info(f"Parsed analysis result: {analysis_json}")
                     except json.JSONDecodeError as e:
                         logging.error(f"Failed to parse Gemini response: {str(e)}")
                         raise HTTPException(status_code=500, detail="Failed to parse analysis results")
                     
-                    # Generate trend data
-                    trend_data = []
+                    # Get real trend data
                     if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
                         search_term = f"{analysis_json['brand']} {analysis_json['category']}"
-                        trend_data = generate_synthetic_trend_data()
+                        logging.info(f"Getting trend data for search term: {search_term}")
+                        
+                        # Clean brand name for better search results
+                        search_term = search_term.replace('A|X ', '').replace('A/X ', '')
+                        search_term = search_term.strip()
+                        
+                        trend_data = get_trend_data(search_term)
+                        
+                        if trend_data['keywords_data']:
+                            analysis_json['seo_keywords'] = trend_data['keywords_data']
+                            logging.info(f"Updated SEO keywords with {len(trend_data['keywords_data'])} items")
+                    else:
+                        logging.warning("Brand or category is Unknown, skipping trend data")
+                        trend_data = {
+                            'trend_data': [],
+                            'keywords_data': []
+                        }
                     
                     # Create the response
                     response = {
                         **analysis_json,  # Include all fields from analysis
-                        "trend_data": trend_data
+                        "trend_data": trend_data['trend_data'],
+                        "keywords": trend_data['keywords_data']
                     }
                     
+                    logging.info("Successfully created response with trend data and analysis")
                     return response
                     
                 except Exception as e:
-                    logging.error(f"Error in Gemini analysis: {str(e)}")
+                    logging.error(f"Error in analysis: {str(e)}", exc_info=True)
                     raise HTTPException(status_code=500, detail=f"Error analyzing image: {str(e)}")
                 
             except HTTPException:
-                raise  # Re-raise HTTP exceptions
+                raise
             except Exception as e:
-                logging.error(f"Error processing file: {str(e)}")
+                logging.error(f"Error processing file: {str(e)}", exc_info=True)
                 raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
             finally:
                 # Clean up the temporary file
@@ -277,9 +380,9 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                     logging.error(f"Error deleting temporary file: {str(e)}")
     
     except HTTPException:
-        raise  # Re-raise HTTP exceptions
+        raise
     except Exception as e:
-        logging.error(f"Error in analyze_image_route: {str(e)}")
+        logging.error(f"Error in analyze_image_route: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @app.post("/upload")
@@ -408,7 +511,7 @@ async def upload_file(files: List[UploadFile] = File(...)):
                 logging.info(f"Successfully processed {len(trend_data_list)} trend data points")
             else:
                 logging.info("No valid trend data points, generating synthetic data")
-                trend_data_list = generate_synthetic_trend_data()
+                trend_data_list = []
             
             # Try to get related queries for keyword suggestions
             try:
