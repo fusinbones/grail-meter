@@ -13,10 +13,12 @@ import {
   Alert,
   CircularProgress,
   IconButton,
+  ButtonGroup,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloseIcon from '@mui/icons-material/Close';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -188,12 +190,19 @@ const TrendGraph = ({ title, trendData }) => {
 
 const App = () => {
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
 
   const handleImageUpload = (event) => {
+    const files = Array.from(event.target.files);
+    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
+    setError(null);
+  };
+
+  const handleCameraCapture = (event) => {
     const files = Array.from(event.target.files);
     setSelectedFiles(prevFiles => [...prevFiles, ...files]);
     setError(null);
@@ -278,7 +287,6 @@ const App = () => {
             }}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
-            onClick={() => fileInputRef.current?.click()}
           >
             <input
               type="file"
@@ -288,12 +296,37 @@ const App = () => {
               style={{ display: 'none' }}
               ref={fileInputRef}
             />
-            <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
-            <Typography variant="h6" gutterBottom>
-              Drop images here or click to select
-            </Typography>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleCameraCapture}
+              style={{ display: 'none' }}
+              ref={cameraInputRef}
+            />
+            
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <ButtonGroup variant="contained">
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  startIcon={<CloudUploadIcon />}
+                >
+                  Upload Photos
+                </Button>
+                <Button
+                  onClick={() => cameraInputRef.current?.click()}
+                  startIcon={<PhotoCameraIcon />}
+                >
+                  Take Photo
+                </Button>
+              </ButtonGroup>
+            </Box>
+            
             <Typography variant="body2" color="textSecondary">
               Supported formats: JPG, PNG, GIF
+            </Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+              Or drag and drop your images here
             </Typography>
           </Box>
 
