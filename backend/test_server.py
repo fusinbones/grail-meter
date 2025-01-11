@@ -390,89 +390,32 @@ async def upload_file(files: List[UploadFile] = File(...)):
             
             # Create search terms
             search_term = f"{brand} {category}"
+            logging.info(f"Getting trend data for search term: {search_term}")
             
-            pytrends = TrendReq(hl='en-US')
-            pytrends.build_payload(
-                kw_list=[search_term],
-                timeframe='today 12-m',
-                geo='US'
-            )
+            trend_data = get_trend_data(search_term)
             
-            # Get the interest over time data
-            trend_data = pytrends.interest_over_time()
-            
-            if not trend_data.empty and search_term in trend_data.columns:
-                # Convert to list format
-                trend_data = trend_data.reset_index()
-                
-                # Create trend data list with proper error handling
-                trend_data_list = []
-                for _, row in trend_data.iterrows():
-                    try:
-                        if pd.notna(row[search_term]):  # Check if value is not NaN
-                            trend_data_list.append({
-                                'date': row['date'].strftime('%Y-%m-%d'),
-                                'volume': int(row[search_term])
-                            })
-                    except (ValueError, KeyError, TypeError) as e:
-                        logging.error(f"Error processing trend data row: {e}")
-                        continue
-                
-                if trend_data_list:
-                    logging.info(f"Successfully processed {len(trend_data_list)} trend data points")
-                else:
-                    logging.info("No valid trend data points, generating synthetic data")
-                    trend_data_list = []
-            else:
-                logging.warning("No trend data available for the search term, generating synthetic data")
-                trend_data_list = []
-            
-            # Try to get related queries for keyword suggestions
-            try:
-                related_queries = pytrends.related_queries()
-                if related_queries and search_term in related_queries:
-                    top_queries = related_queries[search_term].get('top')
-                    if isinstance(top_queries, pd.DataFrame) and not top_queries.empty:
-                        # Convert to our keyword format
-                        keywords = []
-                        for _, row in top_queries.iterrows():
-                            try:
-                                keywords.append({
-                                    'keyword': str(row['query']),
-                                    'volume': int(row['value'])
-                                })
-                            except (ValueError, KeyError, TypeError) as e:
-                                logging.error(f"Error processing keyword: {e}")
-                                continue
-                        
-                        if keywords:
-                            best_analysis['seo_keywords'] = keywords[:5]
-                            logging.info(f"Successfully found {len(keywords)} related keywords")
-            except Exception as e:
-                logging.error(f"Error fetching related queries: {e}")
-            
-            # If no keywords found or error occurred, use the ones from Gemini
-            if not best_analysis.get('seo_keywords'):
-                logging.info("Using Gemini-generated keywords as fallback")
+            if trend_data['keywords_data']:
+                best_analysis['seo_keywords'] = trend_data['keywords_data']
+                logging.info(f"Updated SEO keywords with {len(trend_data['keywords_data'])} items")
             
             return {
                 "message": "Analysis completed successfully",
                 "analysis": best_analysis,
-                "trend_data": trend_data_list,
-                "keywords": best_analysis.get("seo_keywords", [])
+                "trend_data": trend_data['trend_data'],
+                "keywords": trend_data['keywords_data']
             }
             
         except Exception as e:
-            logging.error(f"Error in pytrends request: {str(e)}")
+            logging.error(f"Error in pytrends request: {str(e)}", exc_info=True)
             return {
                 "message": "Analysis completed but trend data fetch failed",
                 "analysis": best_analysis,
                 "trend_data": [],
-                "keywords": best_analysis.get("seo_keywords", [])
+                "keywords": []
             }
             
     except Exception as e:
-        logging.error(f"Error processing files: {str(e)}")
+        logging.error(f"Error processing files: {str(e)}", exc_info=True)
         return {"message": f"Error processing files: {str(e)}", "error": True}
 
 def cleanup():
