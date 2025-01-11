@@ -510,17 +510,17 @@ async def upload_file(files: List[UploadFile] = File(...)):
             if trend_data_list:
                 logging.info(f"Successfully processed {len(trend_data_list)} trend data points")
             else:
-                logging.info("No valid trend data points, generating synthetic data")
+                logging.info("No valid trend data points")
                 trend_data_list = []
             
-            # Try to get related queries for keyword suggestions
+            # Get related queries for keyword suggestions from PyTrends only
+            keywords = []
             try:
                 related_queries = pytrends.related_queries()
                 if related_queries and search_term in related_queries:
                     top_queries = related_queries[search_term].get('top')
                     if isinstance(top_queries, pd.DataFrame) and not top_queries.empty:
                         # Convert to our keyword format
-                        keywords = []
                         for _, row in top_queries.iterrows():
                             try:
                                 keywords.append({
@@ -532,20 +532,21 @@ async def upload_file(files: List[UploadFile] = File(...)):
                                 continue
                         
                         if keywords:
-                            best_analysis['seo_keywords'] = keywords[:5]
-                            logging.info(f"Successfully found {len(keywords)} related keywords")
+                            logging.info(f"Successfully found {len(keywords)} related keywords from PyTrends")
+                        else:
+                            logging.info("No valid keywords found from PyTrends")
+                    else:
+                        logging.info("No related queries data from PyTrends")
+                else:
+                    logging.info("No related queries result from PyTrends")
             except Exception as e:
-                logging.error(f"Error fetching related queries: {e}")
-            
-            # If no keywords found or error occurred, use the ones from Gemini
-            if not best_analysis.get('seo_keywords'):
-                logging.info("Using Gemini-generated keywords as fallback")
+                logging.error(f"Error fetching related queries from PyTrends: {e}")
             
             return {
                 "message": "Analysis completed successfully",
                 "analysis": best_analysis,
                 "trend_data": trend_data_list,
-                "keywords": best_analysis.get("seo_keywords", [])
+                "keywords": keywords  # Only use PyTrends keywords
             }
             
         except Exception as e:
@@ -554,7 +555,7 @@ async def upload_file(files: List[UploadFile] = File(...)):
                 "message": "Analysis completed but trend data fetch failed",
                 "analysis": best_analysis,
                 "trend_data": [],
-                "keywords": best_analysis.get("seo_keywords", [])
+                "keywords": []  # Return empty list if PyTrends fails
             }
             
     except Exception as e:

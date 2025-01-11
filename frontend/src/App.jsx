@@ -421,7 +421,7 @@ const App = () => {
             }}>
               {analysisResult.seo_keywords
                 .sort((a, b) => b.volume - a.volume)
-                .map((item, index) => (
+                .map((keyword, index) => (
                   <ListItem
                     key={index}
                     divider={index < analysisResult.seo_keywords.length - 1}
@@ -444,18 +444,22 @@ const App = () => {
                             color: 'text.primary'
                           }}
                         >
-                          {item.keyword}
+                          {keyword.keyword}
                         </Typography>
-                        <Typography 
-                          variant="body2"
-                          sx={{ 
-                            color: 'primary.main',
-                            fontWeight: 'medium',
-                            ml: 2
-                          }}
-                        >
-                          {item.volume.toLocaleString()}
-                        </Typography>
+                        {keyword.volume && keyword.volume > 0 && (
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: 'text.secondary',
+                              backgroundColor: 'background.paper',
+                              px: 1,
+                              py: 0.25,
+                              borderRadius: 1
+                            }}
+                          >
+                            {keyword.volume}
+                          </Typography>
+                        )}
                       </Box>
                       <Box sx={{ 
                         width: '100%',
@@ -466,7 +470,7 @@ const App = () => {
                       }}>
                         <Box
                           sx={{
-                            width: `${(item.volume / Math.max(...analysisResult.seo_keywords.map(k => k.volume || 0))) * 100}%`,
+                            width: `${(keyword.volume / Math.max(...analysisResult.seo_keywords.map(k => k.volume || 0))) * 100}%`,
                             height: '100%',
                             bgcolor: 'primary.main',
                             transition: 'width 0.5s ease-in-out'
