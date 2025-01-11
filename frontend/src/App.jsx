@@ -611,28 +611,42 @@ const App = () => {
             elevation={0} 
             sx={{ 
               mt: 4,
-              p: 4,
+              p: { xs: 2, sm: 4 },
               borderRadius: 3,
               backgroundColor: '#ffffff',
               border: '1px solid',
               borderColor: 'divider'
             }}
           >
-            <Grid container spacing={4}>
+            <Grid container spacing={{ xs: 2, sm: 4 }}>
               {/* Trend Graph */}
-              <Grid item xs={12} md={8}>
-                <Typography variant="h6" gutterBottom>
+              <Grid item xs={12} lg={8}>
+                <Typography variant="h6" gutterBottom sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  fontSize: { xs: '1.1rem', sm: '1.25rem' }
+                }}>
+                  <TrendingUpIcon color="primary" />
                   Market Trend Analysis
                 </Typography>
-                <Box sx={{ height: 400 }}>
+                <Box sx={{ 
+                  height: { xs: '300px', sm: '400px' },
+                  transition: 'height 0.3s ease'
+                }}>
                   <TrendGraph trendData={analysisResult.trend_data} />
                 </Box>
               </Grid>
 
               {/* SEO Keywords */}
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} lg={4}>
                 <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="h6" gutterBottom sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1,
+                    fontSize: { xs: '1.1rem', sm: '1.25rem' }
+                  }}>
                     <SearchIcon color="primary" />
                     Search Volume Analysis
                   </Typography>
@@ -641,13 +655,14 @@ const App = () => {
                       flex: 1,
                       display: 'flex',
                       flexDirection: 'column',
-                      height: '400px',
+                      height: { xs: 'auto', lg: '400px' },
+                      minHeight: { xs: '300px', sm: '400px' },
                       overflow: 'hidden',
                       bgcolor: 'background.paper',
                       borderRadius: 1,
                       border: '1px solid',
                       borderColor: 'divider',
-                      p: 2
+                      p: { xs: 1.5, sm: 2 }
                     }}>
                       <List sx={{ 
                         flex: 1,
@@ -656,7 +671,7 @@ const App = () => {
                           transition: 'all 0.2s ease-in-out',
                           '&:hover': {
                             bgcolor: 'action.hover',
-                            transform: 'translateX(8px)'
+                            transform: { xs: 'none', sm: 'translateX(8px)' }
                           }
                         }
                       }}>
@@ -674,12 +689,20 @@ const App = () => {
                                 sx={{
                                   flexDirection: 'column',
                                   alignItems: 'stretch',
-                                  py: 2
+                                  py: { xs: 1.5, sm: 2 },
+                                  px: { xs: 1, sm: 2 }
                                 }}
                               >
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                                   <KeywordIcon fontSize="small" color="primary" />
-                                  <Typography variant="body1" sx={{ fontWeight: 'medium', flex: 1 }}>
+                                  <Typography 
+                                    variant="body1" 
+                                    sx={{ 
+                                      fontWeight: 'medium', 
+                                      flex: 1,
+                                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                                    }}
+                                  >
                                     {typeof keyword === 'object' ? keyword.keyword : keyword}
                                   </Typography>
                                   <Typography 
@@ -690,26 +713,60 @@ const App = () => {
                                       px: 1,
                                       py: 0.5,
                                       borderRadius: 1,
-                                      opacity: 0.9
+                                      opacity: 0.9,
+                                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
                                     }}
                                   >
-                                    Rank #{index + 1}
+                                    #{index + 1}
                                   </Typography>
                                 </Box>
                                 {typeof keyword === 'object' && keyword.volume && (
                                   <Box sx={{ mt: 1 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                      <BarChartIcon fontSize="small" color="action" />
-                                      <Typography variant="body2" color="text.secondary">
-                                        Monthly Volume: {keyword.volume.toLocaleString()}
+                                    <Box sx={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      gap: 1, 
+                                      mb: 0.5,
+                                      flexWrap: 'wrap'
+                                    }}>
+                                      <Box sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 1,
+                                        flex: { xs: '1 1 100%', sm: '0 1 auto' }
+                                      }}>
+                                        <BarChartIcon 
+                                          fontSize="small" 
+                                          color="action"
+                                          sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}
+                                        />
+                                        <Typography 
+                                          variant="body2" 
+                                          color="text.secondary"
+                                          sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}
+                                        >
+                                          Monthly Volume:
+                                        </Typography>
+                                      </Box>
+                                      <Typography 
+                                        variant="body2" 
+                                        color="primary.main"
+                                        sx={{ 
+                                          fontWeight: 'medium',
+                                          fontSize: { xs: '0.9rem', sm: '1rem' },
+                                          ml: { xs: 3, sm: 0 }
+                                        }}
+                                      >
+                                        {volume.toLocaleString()}
                                       </Typography>
                                     </Box>
                                     <Box sx={{ 
                                       mt: 1,
-                                      height: 8,
+                                      height: { xs: 6, sm: 8 },
                                       bgcolor: 'grey.100',
                                       borderRadius: 4,
-                                      overflow: 'hidden'
+                                      overflow: 'hidden',
+                                      position: 'relative'
                                     }}>
                                       <Box
                                         sx={{
@@ -717,9 +774,40 @@ const App = () => {
                                           height: '100%',
                                           bgcolor: 'primary.main',
                                           borderRadius: 4,
-                                          transition: 'width 0.5s ease-in-out'
+                                          transition: 'width 0.5s ease-in-out',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'flex-end',
+                                          pr: 1
                                         }}
-                                      />
+                                      >
+                                        <Typography 
+                                          variant="caption" 
+                                          sx={{ 
+                                            color: 'white',
+                                            fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                                            display: percentage > 15 ? 'block' : 'none'
+                                          }}
+                                        >
+                                          {Math.round(percentage)}%
+                                        </Typography>
+                                      </Box>
+                                      {percentage <= 15 && (
+                                        <Typography 
+                                          variant="caption" 
+                                          sx={{ 
+                                            position: 'absolute',
+                                            right: 0,
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            pr: 1,
+                                            color: 'text.secondary',
+                                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                                          }}
+                                        >
+                                          {Math.round(percentage)}%
+                                        </Typography>
+                                      )}
                                     </Box>
                                   </Box>
                                 )}
@@ -730,7 +818,7 @@ const App = () => {
                     </Box>
                   ) : (
                     <Box sx={{ 
-                      height: 400,
+                      height: { xs: '300px', sm: '400px' },
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
@@ -741,8 +829,12 @@ const App = () => {
                       border: '1px solid',
                       borderColor: 'divider'
                     }}>
-                      <SearchIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
-                      <Typography color="text.secondary" align="center">
+                      <SearchIcon sx={{ fontSize: { xs: 36, sm: 48 }, color: 'text.disabled' }} />
+                      <Typography 
+                        color="text.secondary" 
+                        align="center"
+                        sx={{ px: 2, fontSize: { xs: '0.9rem', sm: '1rem' } }}
+                      >
                         No keyword data available
                       </Typography>
                     </Box>
