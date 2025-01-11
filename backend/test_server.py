@@ -160,126 +160,105 @@ def analyze_with_gemini(image_path: str) -> str:
             "error": str(e)
         })
 
-def get_trend_data(search_term):
-    """Get real trend data using PyTrends."""
+def get_gemini_fallback_data(search_term):
+    """Get suggested keywords from Gemini when PyTrends fails."""
     try:
-        from pytrends.request import TrendReq
-        import pandas as pd
-        from datetime import datetime, timedelta
-        import os
-
-        logging.info(f"[PyTrends] Initializing for search term: {search_term}")
+        model = genai.GenerativeModel('gemini-1.5-pro')
+        prompt = f"""Generate 5 relevant search keywords for '{search_term}' in the fashion/clothing context.
+        Return as JSON array of objects with 'keyword' and estimated 'volume' (1-100).
+        Example: [{{"keyword": "example term", "volume": 80}}]"""
         
+        response = model.generate_content(prompt)
+        if response and response.text:
+            try:
+                keywords = json.loads(response.text)
+                if isinstance(keywords, list):
+                    return {
+                        'trend_data': [],
+                        'keywords_data': keywords
+                    }
+            except json.JSONDecodeError:
+                pass
+                
+    except Exception as e:
+        logging.error(f"Gemini fallback error: {str(e)}")
+    
+    return {
+        'trend_data': [],
+        'keywords_data': []
+    }
+
+def get_trend_data(search_term):
+    """Get trend data using PyTrends with fallback to Gemini."""
+    try:
         # Initialize PyTrends with robust settings
         pytrends = TrendReq(
             hl='en-US',
             tz=360,
-            timeout=(60,60),  # Long timeout
-            retries=5,        # More retries
-            backoff_factor=2  # Longer backoff
+            timeout=(60,60),
+            retries=3,
+            backoff_factor=1.5
         )
         
-        # Clean and validate search term
+        # Clean search term
         search_term = search_term.strip()
         if not search_term or len(search_term) < 2:
             logging.warning(f"[PyTrends] Invalid search term: {search_term}")
-            return {
-                'trend_data': [],
-                'keywords_data': []
-            }
+            return get_gemini_fallback_data(search_term)
             
-        # Build the payload with proper parameters
-        kw_list = [search_term]
-        timeframe = 'today 12-m'  # Last 12 months
+        # Try different timeframes in case of failure
+        timeframes = ['today 12-m', 'today 3-m', 'today 1-m']
         
-        logging.info(f"[PyTrends] Building payload with search term: {search_term}")
-        try:
-            pytrends.build_payload(
-                kw_list=kw_list,
-                cat=0,
-                timeframe=timeframe,
-                geo='US',
-                gprop=''
-            )
-            logging.info(f"[PyTrends] Payload built successfully for {search_term}")
-        except Exception as e:
-            logging.error(f"[PyTrends] Error building payload: {str(e)}", exc_info=True)
+        for timeframe in timeframes:
             try:
-                logging.info("[PyTrends] Retrying with shorter timeframe")
+                logging.info(f"[PyTrends] Attempting with timeframe: {timeframe}")
+                kw_list = [search_term]
                 pytrends.build_payload(
                     kw_list=kw_list,
                     cat=0,
-                    timeframe='today 3-m',  # Try shorter timeframe
-                    geo='US',
-                    gprop=''
+                    timeframe=timeframe,
+                    geo='US'
                 )
-                logging.info(f"[PyTrends] Second payload built successfully for {search_term}")
-            except Exception as e:
-                logging.error(f"[PyTrends] Second attempt failed: {str(e)}", exc_info=True)
-                return {
-                    'trend_data': [],
-                    'keywords_data': []
-                }
-            
-        # Get interest over time with error handling
-        logging.info("[PyTrends] Fetching interest over time data")
-        try:
-            interest_over_time_df = pytrends.interest_over_time()
-            if interest_over_time_df is None or interest_over_time_df.empty:
-                logging.warning(f"[PyTrends] No trend data found for {search_term}")
-                return {
-                    'trend_data': [],
-                    'keywords_data': []
-                }
-            logging.info(f"[PyTrends] Retrieved {len(interest_over_time_df)} data points")
-            
-            # Transform the trend data
-            trend_data = []
-            for date, row in interest_over_time_df.iterrows():
-                if search_term in row and pd.notna(row[search_term]):
-                    trend_data.append({
+                
+                # Get interest over time
+                interest_df = pytrends.interest_over_time()
+                if interest_df is not None and not interest_df.empty:
+                    trend_data = [{
                         'date': date.strftime('%Y-%m-%d'),
                         'volume': int(row[search_term])
-                    })
-            logging.info(f"[PyTrends] Transformed {len(trend_data)} trend data points")
-            
-            # Get related keywords with volumes
-            logging.info("[PyTrends] Fetching related queries")
-            related_queries = pytrends.related_queries()
-            keywords_data = []
-            
-            if related_queries and search_term in related_queries:
-                top_queries = related_queries[search_term].get('top')
-                if isinstance(top_queries, pd.DataFrame) and not top_queries.empty:
-                    for _, row in top_queries.iterrows():
-                        try:
-                            keywords_data.append({
+                    } for date, row in interest_df.iterrows() 
+                    if search_term in row and pd.notna(row[search_term])]
+                    
+                    # Get related queries
+                    related = pytrends.related_queries()
+                    keywords_data = []
+                    
+                    if related and search_term in related:
+                        top_queries = related[search_term].get('top')
+                        if isinstance(top_queries, pd.DataFrame) and not top_queries.empty:
+                            keywords_data = [{
                                 'keyword': str(row['query']),
                                 'volume': int(row['value'])
-                            })
-                        except (ValueError, KeyError) as e:
-                            logging.error(f"[PyTrends] Error processing keyword: {str(e)}")
-                            continue
-                            
-            logging.info(f"[PyTrends] Processed {len(keywords_data)} keywords")
-            return {
-                'trend_data': trend_data,
-                'keywords_data': keywords_data
-            }
-            
-        except Exception as e:
-            logging.error(f"[PyTrends] Error getting trend data: {str(e)}", exc_info=True)
-            return {
-                'trend_data': [],
-                'keywords_data': []
-            }
-            
+                            } for _, row in top_queries.iterrows()]
+                    
+                    if trend_data or keywords_data:
+                        logging.info(f"[PyTrends] Successfully got data with timeframe: {timeframe}")
+                        return {
+                            'trend_data': trend_data,
+                            'keywords_data': keywords_data
+                        }
+                        
+            except Exception as e:
+                logging.warning(f"[PyTrends] Attempt failed for timeframe {timeframe}: {str(e)}")
+                continue
+                
+        # If all PyTrends attempts fail, fall back to Gemini
+        logging.info("[PyTrends] All attempts failed, falling back to Gemini")
+        return get_gemini_fallback_data(search_term)
+        
     except Exception as e:
-        logging.error(f"[PyTrends] Critical error: {str(e)}", exc_info=True)
-        return {
-            'trend_data': [],
-            'keywords_data': []
-        }
+        logging.error(f"[PyTrends] Critical error: {str(e)}")
+        return get_gemini_fallback_data(search_term)
 
 @app.get("/")
 async def read_root():
