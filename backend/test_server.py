@@ -44,42 +44,19 @@ genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 # Initialize Pytrends with minimal settings
 pytrends = TrendReq(hl='en-US')
 
-def analyze_image(image_path):
-    """Analyze image using Gemini."""
+def analyze_with_gemini(image_path: str) -> str:
+    """
+    Analyze an image using Google's Gemini Vision model.
+    """
     try:
-        # Create the prompt for Gemini
-        prompt = """You are a thrift store SEO analyzer. Focus ONLY on identifying key brand and category information for SEO purposes.
-        Provide ONLY:
-        1. Brand name (if visible)
-        2. Category (be specific but use common search terms, e.g., 'mens hoodie' not just 'hoodie')
-        3. Condition rating (1-10)
-        4. Top 5 SEO keywords for this item (combine brand and category in various ways that people actually search for)
-        
-        Format your response as a JSON object with these fields:
-        {
-            "brand": "Brand name or 'Unknown'",
-            "category": "Specific category with gender if applicable",
-            "condition": rating_number,
-            "seo_keywords": [
-                {"keyword": "most popular search term", "volume": 100},
-                {"keyword": "second most popular", "volume": 90},
-                {"keyword": "third most popular", "volume": 80},
-                {"keyword": "fourth most popular", "volume": 70},
-                {"keyword": "fifth most popular", "volume": 60}
-            ]
-        }"""
-
-        # Load the image using PIL and convert to bytes
+        model = genai.GenerativeModel('gemini-pro-vision')
         img = Image.open(image_path)
-        response = genai.GenerativeModel('gemini-1.5-flash').generate_content([
-            prompt,
-            img
-        ])
-
+        response = model.generate_content(
+            ["Analyze this image and provide a JSON response with the following fields: brand (string), category (string), condition (number 1-10), seo_keywords (array of strings). Make it valid JSON.", img]
+        )
         return response.text
-
     except Exception as e:
-        logging.error(f"Error in analyze_image: {str(e)}")
+        logging.error(f"Error in Gemini analysis: {str(e)}")
         return json.dumps({
             "brand": "Unknown",
             "category": "Unknown",
@@ -137,7 +114,7 @@ def test_endpoint():
     return {"message": "Test endpoint is working"}
 
 @app.post("/analyze")
-async def analyze_image(file: UploadFile = File(...)):
+async def analyze_image_route(file: UploadFile = File(...)):
     """
     Analyze an uploaded image using Google's Gemini Vision model.
     """
@@ -149,7 +126,7 @@ async def analyze_image(file: UploadFile = File(...)):
             buffer.write(content)
         
         # Get AI analysis for this image
-        result = analyze_image(image_path)
+        result = analyze_with_gemini(image_path)
         logging.info(f"Raw AI analysis: {result}")
         
         # Clean the JSON string
@@ -187,7 +164,7 @@ async def upload_file(files: List[UploadFile] = File(...)):
                 temp_file.write(content)
             
             # Get AI analysis for this image
-            result = analyze_image("temp_image.jpg")
+            result = analyze_with_gemini("temp_image.jpg")
             logging.info(f"Raw AI analysis: {result}")
             
             # Clean the JSON string
