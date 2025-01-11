@@ -196,6 +196,10 @@ const App = () => {
   const [error, setError] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
 
+  const API_URL = import.meta.env.PROD 
+    ? 'https://grail-meter-backend.onrender.com'
+    : 'http://localhost:8000';
+
   const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
     if (files.length > 0) {
@@ -235,7 +239,7 @@ const App = () => {
         formData.append('files', file);
       });
 
-      const response = await fetch('http://localhost:8000/analyze', {
+      const response = await fetch(`${API_URL}/analyze`, {
         method: 'POST',
         body: formData,
       });

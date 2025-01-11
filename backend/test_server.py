@@ -30,10 +30,14 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=[
+        "http://localhost:5173",  # Local development
+        "http://localhost:4173",  # Local preview
+        "https://grail-meter.vercel.app",  # Production
+    ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Load environment variables
