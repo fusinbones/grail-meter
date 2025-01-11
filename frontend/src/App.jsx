@@ -235,6 +235,7 @@ const App = () => {
 
     setLoading(true);
     setError(null);
+    setAnalysisResult(null); // Reset previous results
 
     try {
       const formData = new FormData();
@@ -247,15 +248,21 @@ const App = () => {
         body: formData,
       });
 
+      const result = await response.json();
+      
       if (!response.ok) {
-        throw new Error('Failed to analyze images');
+        throw new Error(result.detail || 'Failed to analyze images');
       }
 
-      const result = await response.json();
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response from server');
+      }
+
       setAnalysisResult(result);
-      setSelectedFiles([]); // Clear selected files after successful analysis
     } catch (err) {
+      console.error('Analysis error:', err);
       setError(err.message || 'An error occurred during analysis');
+      setAnalysisResult(null);
     } finally {
       setLoading(false);
     }
@@ -423,6 +430,33 @@ const App = () => {
         </Box>
       </Paper>
 
+      {/* Loading State */}
+      {loading && (
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            mt: 4,
+            p: 4,
+            borderRadius: 3,
+            bgcolor: 'background.default',
+            border: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 2
+          }}
+        >
+          <CircularProgress size={40} />
+          <Typography variant="h6" color="text.secondary">
+            Analyzing your images...
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            This may take a few moments
+          </Typography>
+        </Paper>
+      )}
+
       {/* Error Message */}
       {error && (
         <Alert 
@@ -431,6 +465,15 @@ const App = () => {
             mt: 3,
             borderRadius: 2
           }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={() => setError(null)}
+            >
+              Dismiss
+            </Button>
+          }
         >
           {error}
         </Alert>

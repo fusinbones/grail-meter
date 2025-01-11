@@ -225,29 +225,46 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
             try:
                 # Read and write the file
                 contents = await file.read()
+                if not contents:
+                    raise HTTPException(status_code=400, detail="Empty file uploaded")
+                
                 temp_file.write(contents)
                 temp_file.flush()
                 
                 logging.info(f"Temporary file created: {temp_file.name}")
                 
-                # Get the analysis from Gemini
-                analysis_text = analyze_with_gemini(temp_file.name)
-                analysis_json = json.loads(clean_json_string(analysis_text))
+                try:
+                    # Get the analysis from Gemini
+                    analysis_text = analyze_with_gemini(temp_file.name)
+                    if not analysis_text:
+                        raise HTTPException(status_code=500, detail="Failed to analyze image with Gemini")
+                    
+                    try:
+                        analysis_json = json.loads(clean_json_string(analysis_text))
+                    except json.JSONDecodeError as e:
+                        logging.error(f"Failed to parse Gemini response: {str(e)}")
+                        raise HTTPException(status_code=500, detail="Failed to parse analysis results")
+                    
+                    # Generate trend data
+                    trend_data = []
+                    if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
+                        search_term = f"{analysis_json['brand']} {analysis_json['category']}"
+                        trend_data = generate_synthetic_trend_data()
+                    
+                    # Create the response
+                    response = {
+                        **analysis_json,  # Include all fields from analysis
+                        "trend_data": trend_data
+                    }
+                    
+                    return response
+                    
+                except Exception as e:
+                    logging.error(f"Error in Gemini analysis: {str(e)}")
+                    raise HTTPException(status_code=500, detail=f"Error analyzing image: {str(e)}")
                 
-                # Generate trend data
-                trend_data = []
-                if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
-                    search_term = f"{analysis_json['brand']} {analysis_json['category']}"
-                    trend_data = generate_synthetic_trend_data()
-                
-                # Create the response
-                response = {
-                    **analysis_json,  # Include all fields from analysis
-                    "trend_data": trend_data
-                }
-                
-                return response
-                
+            except HTTPException:
+                raise  # Re-raise HTTP exceptions
             except Exception as e:
                 logging.error(f"Error processing file: {str(e)}")
                 raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
@@ -259,9 +276,11 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                 except Exception as e:
                     logging.error(f"Error deleting temporary file: {str(e)}")
     
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions
     except Exception as e:
         logging.error(f"Error in analyze_image_route: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error in analyze_image_route: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
 @app.post("/upload")
 async def upload_file(files: List[UploadFile] = File(...)):
