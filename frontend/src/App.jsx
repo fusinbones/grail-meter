@@ -243,6 +243,7 @@ const App = () => {
 
       const data = await response.json();
       setAnalysisResult(data);
+      setSelectedFiles([]);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -488,8 +489,9 @@ const App = () => {
                       width: '100%', 
                       height: 'calc(100% - 40px)',
                       '& .recharts-wrapper': {
+                        marginBottom: '20px',
                         '& .recharts-xAxis .recharts-cartesian-axis-tick-value': {
-                          transform: 'translateY(5px)'
+                          transform: 'translateY(-5px)'
                         }
                       }
                     }}>
