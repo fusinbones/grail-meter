@@ -258,7 +258,9 @@ const App = () => {
 
       let result;
       try {
-        result = await response.json();
+        const text = await response.text();
+        console.log('Raw response:', text);
+        result = JSON.parse(text);
       } catch (e) {
         console.error('Failed to parse JSON response:', e);
         throw new Error('Invalid response format from server');
@@ -269,7 +271,14 @@ const App = () => {
         throw new Error('Invalid response from server');
       }
 
-      console.log('Analysis result:', result);
+      // Ensure trend_data is in the correct format
+      if (result.trend_data) {
+        result.trend_data = Array.isArray(result.trend_data) ? result.trend_data : [];
+      } else {
+        result.trend_data = [];
+      }
+
+      console.log('Processed analysis result:', result);
       setAnalysisResult(result);
     } catch (err) {
       console.error('Analysis error:', err);
@@ -532,7 +541,7 @@ const App = () => {
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    bgcolor: 'background.paper',
+                    backgroundColor: '#ffffff',
                     border: '1px solid',
                     borderColor: 'divider'
                   }}
@@ -540,7 +549,7 @@ const App = () => {
                   {selectedFiles[0] && (
                     <img
                       src={URL.createObjectURL(selectedFiles[0])}
-                      alt="Uploaded item"
+                      alt="Analyzed item"
                       style={{
                         width: '100%',
                         height: '100%',

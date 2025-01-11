@@ -11,6 +11,7 @@ import {
 import { Box, Typography } from '@mui/material';
 
 const TrendGraph = ({ title, trendData }) => {
+  // Early return for invalid data
   if (!trendData || !Array.isArray(trendData) || trendData.length === 0) {
     return (
       <Box sx={{ 
@@ -21,7 +22,7 @@ const TrendGraph = ({ title, trendData }) => {
         justifyContent: 'center',
         flexDirection: 'column',
         gap: 2,
-        bgcolor: 'background.paper',
+        backgroundColor: '#ffffff',
         borderRadius: 1,
         p: 3
       }}>
@@ -35,12 +36,22 @@ const TrendGraph = ({ title, trendData }) => {
     );
   }
 
-  // Ensure data is properly formatted
-  const formattedData = trendData.map(item => ({
-    month: item.date || item.month,
-    interest: typeof item.interest === 'number' ? item.interest : 
-             typeof item.volume === 'number' ? item.volume : 0
-  }));
+  // Transform the data to ensure it's in the correct format
+  const formattedData = trendData.map((item, index) => {
+    // Handle both possible data structures
+    if (typeof item === 'object' && item !== null) {
+      return {
+        name: item.date || item.month || `Month ${index + 1}`,
+        value: typeof item.interest === 'number' ? item.interest :
+               typeof item.volume === 'number' ? item.volume : 0
+      };
+    }
+    // Handle primitive values
+    return {
+      name: `Month ${index + 1}`,
+      value: typeof item === 'number' ? item : 0
+    };
+  });
 
   return (
     <Box sx={{ 
@@ -50,7 +61,7 @@ const TrendGraph = ({ title, trendData }) => {
       position: 'relative',
       px: 2,
       pb: 4,
-      bgcolor: 'background.paper',
+      backgroundColor: '#ffffff',
       borderRadius: 1
     }}>
       <ResponsiveContainer>
@@ -65,7 +76,7 @@ const TrendGraph = ({ title, trendData }) => {
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
-            dataKey="month" 
+            dataKey="name" 
             tick={{ fontSize: 12 }}
             tickMargin={15}
             height={60}
@@ -73,18 +84,18 @@ const TrendGraph = ({ title, trendData }) => {
           />
           <YAxis 
             tick={{ fontSize: 12 }}
-            domain={[0, 100]}
-            tickFormatter={(value) => `${value}%`}
+            domain={[0, 'auto']}
+            tickFormatter={(value) => `${value}`}
             width={55}
             tickMargin={10}
           />
           <Tooltip 
-            formatter={(value) => [`${value}%`, 'Interest']}
-            labelFormatter={(label) => `Month: ${label}`}
+            formatter={(value) => [value, 'Interest']}
+            labelFormatter={(label) => `${label}`}
           />
           <Line
             type="monotone"
-            dataKey="interest"
+            dataKey="value"
             stroke="#2196f3"
             strokeWidth={2}
             dot={false}
