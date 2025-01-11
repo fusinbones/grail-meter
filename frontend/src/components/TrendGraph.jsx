@@ -16,30 +16,32 @@ const TrendGraph = ({ title, trendData }) => {
       width: '100%', 
       height: '100%',
       minHeight: '300px',
-      position: 'relative'
+      position: 'relative',
+      px: 2
     }}>
       <ResponsiveContainer>
         <LineChart
           data={trendData}
           margin={{
-            top: 16,
-            right: 16,
-            left: 0,
-            bottom: 16,
+            top: 20,
+            right: 30,
+            left: 20,
+            bottom: 30,
           }}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="month" 
             tick={{ fontSize: 12 }}
-            tickMargin={8}
-            height={40}
+            tickMargin={12}
+            height={50}
           />
           <YAxis 
             tick={{ fontSize: 12 }}
             domain={[0, 100]}
             tickFormatter={(value) => `${value}%`}
-            width={45}
+            width={50}
+            tickMargin={8}
           />
           <Tooltip 
             formatter={(value) => [`${value}%`, 'Interest']}

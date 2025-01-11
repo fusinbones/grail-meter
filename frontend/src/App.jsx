@@ -333,67 +333,62 @@ const App = () => {
 
           {/* Selected Images Preview */}
           {selectedFiles.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <Grid container spacing={2}>
-                {selectedFiles.map((file, index) => (
-                  <Grid item xs={6} sm={4} md={3} key={index}>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              {Array.from(selectedFiles).map((file, index) => (
+                <Grid item xs={6} sm={4} md={3} key={index}>
+                  <Paper 
+                    elevation={2}
+                    sx={{ 
+                      position: 'relative',
+                      paddingTop: '100%', // 1:1 Aspect ratio
+                      overflow: 'hidden'
+                    }}
+                  >
                     <Box
+                      component="img"
+                      src={URL.createObjectURL(file)}
+                      alt={`Preview ${index + 1}`}
                       sx={{
-                        position: 'relative',
-                        paddingTop: '100%',
-                        borderRadius: 1,
-                        overflow: 'hidden',
-                        bgcolor: 'rgba(0,0,0,0.03)'
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => handleRemoveImage(index)}
+                      sx={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        bgcolor: 'rgba(255, 255, 255, 0.8)',
+                        '&:hover': {
+                          bgcolor: 'rgba(255, 255, 255, 0.9)',
+                        }
                       }}
                     >
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Selected ${index + 1}`}
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover'
-                        }}
-                      />
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveImage(index);
-                        }}
-                        sx={{
-                          position: 'absolute',
-                          top: 4,
-                          right: 4,
-                          bgcolor: 'rgba(255,255,255,0.9)',
-                          '&:hover': {
-                            bgcolor: 'rgba(255,255,255,1)'
-                          }
-                        }}
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-              
-              {/* Analyze Button */}
-              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                <Button
-                  variant="contained"
-                  onClick={handleAnalyze}
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={20} /> : null}
-                >
-                  {loading ? 'Analyzing...' : 'Analyze Images'}
-                </Button>
-              </Box>
-            </Box>
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
           )}
+          
+          {/* Analyze Button */}
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+            <Button
+              variant="contained"
+              onClick={handleAnalyze}
+              disabled={loading}
+              startIcon={loading ? <CircularProgress size={20} /> : null}
+            >
+              {loading ? 'Analyzing...' : 'Analyze Images'}
+            </Button>
+          </Box>
         </Paper>
 
         {/* Error Message */}
@@ -485,21 +480,22 @@ const App = () => {
                 <Paper 
                   elevation={3} 
                   sx={{ 
-                    p: 2,
+                    p: 3,
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden'
                   }}
                 >
-                  <Typography variant="h6" sx={{ mb: 2, px: 1 }}>Market Trend</Typography>
+                  <Typography variant="h6" sx={{ mb: 3, px: 1 }}>Market Trend</Typography>
                   {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
                     <Box sx={{ 
                       flex: 1,
                       minHeight: 350,
                       maxHeight: 400,
                       width: '100%',
-                      position: 'relative'
+                      position: 'relative',
+                      pb: 2
                     }}>
                       <TrendGraph 
                         title={`${analysisResult.brand} ${analysisResult.category}`}
