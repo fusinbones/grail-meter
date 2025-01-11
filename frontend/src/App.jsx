@@ -197,7 +197,7 @@ const App = () => {
   const [analysisResult, setAnalysisResult] = useState(null);
 
   const API_URL = import.meta.env.PROD 
-    ? 'https://grail-meter-backend.onrender.com'
+    ? 'https://grail-meter-production.up.railway.app'
     : 'http://localhost:8000';
 
   const handleFileSelect = (event) => {

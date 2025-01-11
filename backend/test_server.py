@@ -34,6 +34,7 @@ app.add_middleware(
         "http://localhost:5173",  # Local development
         "http://localhost:4173",  # Local preview
         "https://grail-meter.vercel.app",  # Production
+        "https://grail-meter-production.up.railway.app",  # Backend URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
