@@ -297,51 +297,55 @@ const App = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom align="center">
+    <Container maxWidth="lg">
+      <Box sx={{ my: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom align="center">
           Grail Meter
         </Typography>
-        <Typography variant="subtitle1" align="center" color="textSecondary" paragraph>
+        <Typography variant="subtitle1" align="center" color="textSecondary" gutterBottom>
           Upload your fashion item to get instant market analysis and trend insights
         </Typography>
-      </Box>
-
-      <Box>
-        {/* File Upload Section */}
-        <GlassPaper>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            style={{ display: 'none' }}
-            ref={fileInputRef}
-          />
+        
+        <Paper
+          elevation={3}
+          sx={{
+            p: 3,
+            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)'
+          }}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
           <Box
             sx={{
               border: '2px dashed #ccc',
               borderRadius: 2,
               p: 3,
               textAlign: 'center',
+              mb: 2,
               cursor: 'pointer',
               '&:hover': {
-                borderColor: 'primary.main',
-                bgcolor: 'rgba(0,0,0,0.01)'
+                borderColor: '#666'
               }
             }}
-            onClick={() => fileInputRef.current.click()}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
+            onClick={() => fileInputRef.current?.click()}
           >
-            <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              style={{ display: 'none' }}
+              ref={fileInputRef}
+            />
+            <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
             <Typography variant="h6" gutterBottom>
-              Drop your image here or click to browse
+              Drop image here or click to select
             </Typography>
             <Typography variant="body2" color="textSecondary">
               Supported formats: JPG, PNG, GIF
             </Typography>
           </Box>
-        </GlassPaper>
+        </Paper>
 
         {/* Loading State */}
         {loading && (
@@ -360,15 +364,18 @@ const App = () => {
         {/* Analysis Results */}
         {analysisResult && (
           <Box sx={{ mt: 4 }}>
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              <Grid container spacing={4}>
+            <Typography variant="h5" gutterBottom align="center">Analysis Results</Typography>
+            
+            {/* Image Preview and Item Details */}
+            <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+              <Grid container spacing={3}>
                 {/* Image Preview */}
                 <Grid item xs={12} md={6}>
                   <Box
                     sx={{
                       width: '100%',
-                      height: 300,
-                      borderRadius: 1,
+                      height: 400,
+                      borderRadius: 2,
                       overflow: 'hidden',
                       display: 'flex',
                       justifyContent: 'center',
@@ -396,20 +403,32 @@ const App = () => {
                   <List>
                     <ListItem>
                       <ListItemText 
-                        primary="Brand" 
-                        secondary={analysisResult.brand || 'Unknown'} 
+                        primary={
+                          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>Brand</Typography>
+                        }
+                        secondary={
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{analysisResult.brand || 'Unknown'}</Typography>
+                        }
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
-                        primary="Category" 
-                        secondary={analysisResult.category || 'Unknown'} 
+                        primary={
+                          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>Category</Typography>
+                        }
+                        secondary={
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{analysisResult.category || 'Unknown'}</Typography>
+                        }
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
-                        primary="Condition" 
-                        secondary={`${analysisResult.condition}/10`} 
+                        primary={
+                          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>Condition</Typography>
+                        }
+                        secondary={
+                          <Typography variant="body1" sx={{ mt: 0.5 }}>{analysisResult.condition}/10</Typography>
+                        }
                       />
                     </ListItem>
                   </List>
@@ -418,7 +437,7 @@ const App = () => {
             </Paper>
 
             {/* SEO Keywords */}
-            <Paper elevation={2} sx={{ p: 2 }}>
+            <Paper elevation={3} sx={{ p: 3 }}>
               <Typography variant="h6" gutterBottom>SEO Keywords</Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {analysisResult.seo_keywords && analysisResult.seo_keywords.map((keyword, index) => (
@@ -426,7 +445,15 @@ const App = () => {
                     key={index}
                     label={keyword}
                     color={index === 0 ? "primary" : "default"}
-                    variant={index === 0 ? "filled" : "outlined"}
+                    sx={{ 
+                      fontSize: '1rem',
+                      py: 2.5,
+                      bgcolor: index === 0 ? 'primary.main' : 'rgba(0,0,0,0.08)',
+                      color: index === 0 ? 'white' : 'text.primary',
+                      '&:hover': {
+                        bgcolor: index === 0 ? 'primary.dark' : 'rgba(0,0,0,0.12)'
+                      }
+                    }}
                   />
                 ))}
               </Box>
