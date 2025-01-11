@@ -8,32 +8,38 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { Box } from '@mui/material';
 
 const TrendGraph = ({ title, trendData }) => {
   return (
-    <div style={{ width: '100%', height: 300, paddingBottom: '40px' }}>
+    <Box sx={{ 
+      width: '100%', 
+      height: '100%',
+      minHeight: '300px',
+      position: 'relative'
+    }}>
       <ResponsiveContainer>
         <LineChart
           data={trendData}
           margin={{
-            top: 20,
-            right: 30,
-            left: 30,
-            bottom: 45,
+            top: 16,
+            right: 16,
+            left: 0,
+            bottom: 16,
           }}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="month" 
             tick={{ fontSize: 12 }}
-            tickMargin={15}
-            interval={0}
+            tickMargin={8}
+            height={40}
           />
           <YAxis 
             tick={{ fontSize: 12 }}
             domain={[0, 100]}
             tickFormatter={(value) => `${value}%`}
-            width={60}
+            width={45}
           />
           <Tooltip 
             formatter={(value) => [`${value}%`, 'Interest']}
@@ -45,11 +51,11 @@ const TrendGraph = ({ title, trendData }) => {
             stroke="#2196f3"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 8 }}
+            activeDot={{ r: 6 }}
           />
         </LineChart>
       </ResponsiveContainer>
-    </div>
+    </Box>
   );
 };
 

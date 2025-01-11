@@ -485,19 +485,21 @@ const App = () => {
                 <Paper 
                   elevation={3} 
                   sx={{ 
-                    p: 3,
-                    height: 'auto',
-                    minHeight: { xs: 400, md: 400 },
+                    p: 2,
+                    height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
+                    overflow: 'hidden'
                   }}
                 >
-                  <Typography variant="h6" sx={{ mb: 3 }}>Market Trend</Typography>
+                  <Typography variant="h6" sx={{ mb: 2, px: 1 }}>Market Trend</Typography>
                   {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
                     <Box sx={{ 
+                      flex: 1,
+                      minHeight: 350,
+                      maxHeight: 400,
                       width: '100%',
-                      height: 'auto',
-                      mt: 2,
+                      position: 'relative'
                     }}>
                       <TrendGraph 
                         title={`${analysisResult.brand} ${analysisResult.category}`}
@@ -506,7 +508,7 @@ const App = () => {
                     </Box>
                   ) : (
                     <Box sx={{ 
-                      flexGrow: 1,
+                      flex: 1,
                       display: 'flex', 
                       alignItems: 'center', 
                       justifyContent: 'center',
