@@ -19,6 +19,9 @@ import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloseIcon from '@mui/icons-material/Close';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import SearchIcon from '@mui/icons-material/Search';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -258,303 +261,305 @@ const App = () => {
     }
   };
 
+  const handleCameraCapture = () => {
+    // Implement camera capture functionality
+  };
+
   return (
-    <Container maxWidth="lg" sx={{ my: 4, pb: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Header */}
+      <Box sx={{ mb: 6, textAlign: 'center' }}>
+        <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
           Grail Meter
         </Typography>
-        <Typography variant="subtitle1" align="center" color="textSecondary" gutterBottom>
-          Upload your fashion item to get instant market analysis and trend insights
+        <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
+          Analyze your items and discover their market trends
         </Typography>
-        
-        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <ButtonGroup variant="contained" sx={{ mb: 2 }}>
-              <Button
-                component="label"
-                startIcon={<CloudUploadIcon />}
-              >
-                Upload Photos
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-              </Button>
-              <Button
-                component="label"
-                startIcon={<PhotoCameraIcon />}
-              >
-                Take Photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-              </Button>
-            </ButtonGroup>
+      </Box>
 
-            {/* Image Preview Grid */}
-            {selectedFiles.length > 0 && (
-              <Box sx={{ width: '100%', mt: 2 }}>
-                <Grid container spacing={2}>
-                  {Array.from(selectedFiles).map((file, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
-                      <Paper
-                        elevation={2}
-                        sx={{
-                          position: 'relative',
-                          paddingTop: '100%',
-                          borderRadius: 1,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <Box
-                          component="img"
-                          src={URL.createObjectURL(file)}
-                          alt={`Preview ${index + 1}`}
-                          sx={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'contain',
-                            bgcolor: 'background.default'
-                          }}
-                        />
-                        <IconButton
-                          size="small"
-                          onClick={() => handleRemoveImage(index)}
-                          sx={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 8,
-                            bgcolor: 'rgba(255, 255, 255, 0.9)',
-                            '&:hover': {
-                              bgcolor: 'rgba(255, 255, 255, 1)'
-                            }
-                          }}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-
-                {/* Analyze Button */}
-                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
-                  <Button
-                    variant="contained"
-                    onClick={handleAnalyze}
-                    disabled={loading}
-                    startIcon={loading ? <CircularProgress size={20} /> : null}
-                  >
-                    {loading ? 'Analyzing...' : 'Analyze Images'}
-                  </Button>
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </Paper>
-
-        {/* Error Message */}
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {/* Analysis Results */}
-        {analysisResult && (
-          <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" gutterBottom align="center">Analysis Results</Typography>
+      {/* Main Content */}
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: 4, 
+          borderRadius: 3,
+          bgcolor: 'background.default',
+          border: '1px solid',
+          borderColor: 'divider'
+        }}
+      >
+        <Box>
+          {/* Upload Section */}
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            gap: 2,
+            mb: 4
+          }}>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+              id="file-input"
+            />
             
-            {/* Image Preview and Item Details */}
-            <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-              <Grid container spacing={3}>
-                {/* Image Preview */}
-                <Grid item xs={12} md={6}>
-                  <Box
-                    sx={{
-                      width: '100%',
-                      height: { xs: 300, md: 400 },
-                      borderRadius: 2,
-                      overflow: 'hidden',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      bgcolor: 'rgba(0,0,0,0.03)'
-                    }}
-                  >
-                    {selectedFiles[0] && (
-                      <img
-                        src={URL.createObjectURL(selectedFiles[0])}
-                        alt="Uploaded item"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain'
-                        }}
-                      />
-                    )}
-                  </Box>
-                </Grid>
-
-                {/* Item Details */}
-                <Grid item xs={12} md={6}>
-                  <Typography variant="h6" gutterBottom>Item Details</Typography>
-                  <List>
-                    <ListItem>
-                      <ListItemText 
-                        primary={
-                          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>Brand</Typography>
-                        }
-                        secondary={
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>{analysisResult.brand || 'Unknown'}</Typography>
-                        }
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText 
-                        primary={
-                          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>Category</Typography>
-                        }
-                        secondary={
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>{analysisResult.category || 'Unknown'}</Typography>
-                        }
-                      />
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText 
-                        primary={
-                          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>Condition</Typography>
-                        }
-                        secondary={
-                          <Typography variant="body1" sx={{ mt: 0.5 }}>{analysisResult.condition}/10</Typography>
-                        }
-                      />
-                    </ListItem>
-                  </List>
-                </Grid>
-              </Grid>
-            </Paper>
-
-            {/* SEO Keywords and Trend Graph */}
-            <Grid container spacing={3}>
-              {/* Trend Graph */}
-              <Grid item xs={12} md={7}>
-                <Paper 
-                  elevation={3} 
+            {/* Upload Buttons */}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2, 
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              <label htmlFor="file-input">
+                <Button
+                  component="span"
+                  variant="contained"
+                  startIcon={<UploadFileIcon />}
                   sx={{ 
-                    p: 3,
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden'
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '1.1rem'
                   }}
                 >
-                  <Typography variant="h6" sx={{ mb: 3, px: 1 }}>Market Trend</Typography>
-                  {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
-                    <Box sx={{ 
-                      flex: 1,
-                      minHeight: 400,
-                      maxHeight: 450,
-                      width: '100%',
-                      position: 'relative',
-                    }}>
-                      <TrendGraph 
-                        title={`${analysisResult.brand} ${analysisResult.category}`}
-                        trendData={analysisResult.trend_data}
+                  Choose Files
+                </Button>
+              </label>
+              <Button
+                onClick={handleCameraCapture}
+                variant="outlined"
+                startIcon={<CameraAltIcon />}
+                sx={{ 
+                  px: 4,
+                  py: 1.5,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '1.1rem'
+                }}
+              >
+                Take Photo
+              </Button>
+            </Box>
+          </Box>
+
+          {/* Image Preview Grid */}
+          {selectedFiles.length > 0 && (
+            <Box sx={{ width: '100%', mt: 3 }}>
+              <Grid container spacing={3}>
+                {Array.from(selectedFiles).map((file, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={index}>
+                    <Paper
+                      elevation={2}
+                      sx={{
+                        position: 'relative',
+                        paddingTop: '100%',
+                        borderRadius: 2,
+                        overflow: 'hidden',
+                        transition: 'transform 0.2s ease-in-out',
+                        '&:hover': {
+                          transform: 'scale(1.02)'
+                        }
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src={URL.createObjectURL(file)}
+                        alt={`Preview ${index + 1}`}
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          bgcolor: 'background.paper'
+                        }}
                       />
-                    </Box>
-                  ) : (
-                    <Box sx={{ 
-                      flex: 1,
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      flexDirection: 'column',
-                      gap: 2
-                    }}>
-                      <Typography variant="body1" color="textSecondary">
-                        No trend data available
-                      </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Try a different search term or check back later
-                      </Typography>
-                    </Box>
-                  )}
-                </Paper>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleRemoveImage(index)}
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          bgcolor: 'rgba(255, 255, 255, 0.9)',
+                          backdropFilter: 'blur(4px)',
+                          '&:hover': {
+                            bgcolor: 'rgba(255, 255, 255, 1)'
+                          }
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Paper>
+                  </Grid>
+                ))}
               </Grid>
 
-              {/* SEO Keywords */}
-              <Grid item xs={12} md={5}>
-                <Paper elevation={3} sx={{ p: 3, height: '100%', minHeight: { xs: 400, md: 500 } }}>
-                  <Typography variant="h6" gutterBottom>SEO Keywords</Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {analysisResult.seo_keywords && 
-                      [...analysisResult.seo_keywords]
-                        .sort((a, b) => b.volume - a.volume)
-                        .map((keywordObj, index) => (
-                          <Box
-                            key={index}
-                            sx={{
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: 1
-                            }}
-                          >
-                            <Box sx={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between',
-                              alignItems: 'center'
-                            }}>
-                              <Typography 
-                                variant="body1" 
-                                sx={{ 
-                                  fontWeight: index === 0 ? 500 : 400,
-                                  color: index === 0 ? 'primary.main' : 'text.primary'
-                                }}
-                              >
-                                {keywordObj.keyword}
-                              </Typography>
-                              <Typography 
-                                variant="body2" 
-                                color="textSecondary"
-                              >
-                                {keywordObj.volume.toLocaleString()} searches
-                              </Typography>
-                            </Box>
-                            <LinearProgress 
-                              variant="determinate" 
-                              value={(keywordObj.volume / 1000) * 100}
-                              sx={{ 
-                                height: 6,
-                                borderRadius: 3,
-                                backgroundColor: 'rgba(0,0,0,0.05)',
-                                '& .MuiLinearProgress-bar': {
-                                  borderRadius: 3,
-                                  backgroundColor: index === 0 ? 'primary.main' : 'primary.light'
-                                }
-                              }}
-                            />
-                          </Box>
-                        ))
-                    }
-                  </Box>
-                </Paper>
+              {/* Analyze Button */}
+              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  variant="contained"
+                  onClick={handleAnalyze}
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
+                  sx={{ 
+                    px: 6,
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '1.1rem'
+                  }}
+                >
+                  {loading ? 'Analyzing...' : 'Analyze Images'}
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </Box>
+      </Paper>
+
+      {/* Error Message */}
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mt: 3,
+            borderRadius: 2
+          }}
+        >
+          {error}
+        </Alert>
+      )}
+
+      {/* Analysis Results */}
+      {analysisResult && (
+        <Box sx={{ mt: 6 }}>
+          <Typography 
+            variant="h4" 
+            gutterBottom 
+            align="center"
+            sx={{ 
+              fontWeight: 'medium',
+              color: 'primary.main',
+              mb: 4
+            }}
+          >
+            Analysis Results
+          </Typography>
+          
+          {/* Image Preview and Item Details */}
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 4,
+              borderRadius: 3,
+              bgcolor: 'background.default',
+              border: '1px solid',
+              borderColor: 'divider'
+            }}
+          >
+            <Grid container spacing={4}>
+              {/* Image Preview */}
+              <Grid item xs={12} md={6}>
+                <Box
+                  sx={{
+                    width: '100%',
+                    height: { xs: 300, md: 400 },
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    bgcolor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider'
+                  }}
+                >
+                  {selectedFiles[0] && (
+                    <img
+                      src={URL.createObjectURL(selectedFiles[0])}
+                      alt="Uploaded item"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  )}
+                </Box>
+              </Grid>
+
+              {/* Item Details */}
+              <Grid item xs={12} md={6}>
+                <Box sx={{ 
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 3
+                }}>
+                  {Object.entries(analysisResult)
+                    .filter(([key]) => key !== 'trend_data')
+                    .map(([key, value]) => (
+                      <Box key={key}>
+                        <Typography 
+                          variant="subtitle1" 
+                          color="text.secondary"
+                          sx={{ mb: 1, textTransform: 'capitalize' }}
+                        >
+                          {key}
+                        </Typography>
+                        <Typography 
+                          variant="h6"
+                          sx={{ 
+                            fontWeight: 'medium',
+                            color: value === 'Unknown' ? 'text.disabled' : 'text.primary'
+                          }}
+                        >
+                          {value}
+                        </Typography>
+                      </Box>
+                    ))}
+                </Box>
               </Grid>
             </Grid>
-          </Box>
-        )}
-      </Box>
+          </Paper>
+
+          {/* Trend Graph */}
+          {analysisResult.trend_data && analysisResult.trend_data.length > 0 && (
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                mt: 4,
+                p: 4,
+                borderRadius: 3,
+                bgcolor: 'background.default',
+                border: '1px solid',
+                borderColor: 'divider'
+              }}
+            >
+              <Typography 
+                variant="h5" 
+                gutterBottom 
+                sx={{ 
+                  mb: 3,
+                  fontWeight: 'medium'
+                }}
+              >
+                Market Trend Analysis
+              </Typography>
+              <TrendGraph 
+                title={`${analysisResult.brand} ${analysisResult.category} Trend`}
+                trendData={analysisResult.trend_data}
+              />
+            </Paper>
+          )}
+        </Box>
+      )}
     </Container>
   );
 };
