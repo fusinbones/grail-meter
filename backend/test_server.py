@@ -85,37 +85,56 @@ def analyze_with_gemini(image_path: str) -> str:
             raise Exception("GEMINI_API_KEY not configured")
             
         logging.info("Starting Gemini analysis...")
-        model = genai.GenerativeModel('gemini-pro-vision')
-        
-        # Load and verify the image
         try:
-            img = PIL.Image.open(image_path)
-            logging.info(f"Image loaded successfully: size={img.size}, mode={img.mode}")
+            # Try to list available models first
+            models = genai.list_models()
+            logging.info(f"Available models: {[model.name for model in models]}")
         except Exception as e:
-            logging.error(f"Error loading image: {str(e)}")
-            raise
-
-        # Prepare the prompt
-        prompt = """Analyze this image and provide a JSON response with the following fields:
-        - brand (string): The brand name visible in the image, or best guess based on style
-        - category (string): Specific category like 'mens hoodie', 'womens dress', etc.
-        - condition (number): Rating from 1-10 of the item's condition
-        - seo_keywords (array): 5 most relevant search terms for this item
+            logging.error(f"Error listing models: {str(e)}")
         
-        Format as valid JSON only, no other text."""
-
-        # Generate the analysis
-        try:
-            response = model.generate_content([prompt, img])
-            if not response or not response.text:
-                raise Exception("Empty response from Gemini API")
+        # Try different model versions
+        model_names = ['gemini-pro-vision', 'gemini-1.0-pro-vision', 'gemini-vision-pro']
+        last_error = None
+        
+        for model_name in model_names:
+            try:
+                logging.info(f"Trying model: {model_name}")
+                model = genai.GenerativeModel(model_name)
                 
-            logging.info("Gemini API response received")
-            logging.info(f"Response text: {response.text}")
-            return response.text
-        except Exception as e:
-            logging.error(f"Error in Gemini API call: {str(e)}")
-            raise
+                # Load and verify the image
+                img = PIL.Image.open(image_path)
+                logging.info(f"Image loaded successfully: size={img.size}, mode={img.mode}")
+                
+                # Convert image to RGB if needed
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                    logging.info("Converted image to RGB mode")
+
+                # Prepare the prompt
+                prompt = """Analyze this image and provide a JSON response with the following fields:
+                - brand (string): The brand name visible in the image, or best guess based on style
+                - category (string): Specific category like 'mens hoodie', 'womens dress', etc.
+                - condition (number): Rating from 1-10 of the item's condition
+                - seo_keywords (array): 5 most relevant search terms for this item
+                
+                Format as valid JSON only, no other text."""
+
+                # Generate the analysis
+                response = model.generate_content([prompt, img])
+                if not response or not response.text:
+                    raise Exception("Empty response from Gemini API")
+                    
+                logging.info("Gemini API response received")
+                logging.info(f"Response text: {response.text}")
+                return response.text
+                
+            except Exception as e:
+                last_error = e
+                logging.error(f"Error with model {model_name}: {str(e)}")
+                continue
+        
+        if last_error:
+            raise last_error
 
     except Exception as e:
         logging.error(f"Error in analyze_with_gemini: {str(e)}")
