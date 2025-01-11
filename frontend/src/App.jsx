@@ -22,6 +22,9 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import KeywordIcon from '@mui/icons-material/Key';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -628,47 +631,117 @@ const App = () => {
 
               {/* SEO Keywords */}
               <Grid item xs={12} md={4}>
-                <Typography variant="h6" gutterBottom>
-                  Search Volume Analysis
-                </Typography>
-                {analysisResult.seo_keywords && analysisResult.seo_keywords.length > 0 ? (
-                  <List 
-                    sx={{ 
+                <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <SearchIcon color="primary" />
+                    Search Volume Analysis
+                  </Typography>
+                  {analysisResult.seo_keywords && analysisResult.seo_keywords.length > 0 ? (
+                    <Box sx={{ 
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '400px',
+                      overflow: 'hidden',
                       bgcolor: 'background.paper',
                       borderRadius: 1,
                       border: '1px solid',
                       borderColor: 'divider'
-                    }}
-                  >
-                    {[...analysisResult.seo_keywords]
-                      .sort((a, b) => (b.volume || 0) - (a.volume || 0))
-                      .map((keyword, index) => (
-                        <ListItem 
-                          key={index}
-                          divider={index < analysisResult.seo_keywords.length - 1}
-                          sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
-                            gap: 0.5
-                          }}
-                        >
-                          <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                            {typeof keyword === 'object' ? keyword.keyword : keyword}
-                          </Typography>
-                          {typeof keyword === 'object' && keyword.volume && (
-                            <Typography variant="body2" color="text.secondary">
-                              Search Volume: {keyword.volume.toLocaleString()}
-                            </Typography>
-                          )}
-                        </ListItem>
-                    ))}
-                  </List>
-                ) : (
-                  <Typography color="text.secondary">
-                    No keyword data available
-                  </Typography>
-                )}
+                    }}>
+                      <List sx={{ 
+                        flex: 1,
+                        overflow: 'auto',
+                        '& .MuiListItem-root': {
+                          transition: 'all 0.2s ease-in-out',
+                          '&:hover': {
+                            bgcolor: 'action.hover',
+                            transform: 'translateX(8px)'
+                          }
+                        }
+                      }}>
+                        {[...analysisResult.seo_keywords]
+                          .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+                          .map((keyword, index) => {
+                            const volume = typeof keyword === 'object' ? keyword.volume : 0;
+                            const maxVolume = Math.max(...analysisResult.seo_keywords.map(k => k.volume || 0));
+                            const percentage = (volume / maxVolume) * 100;
+                            
+                            return (
+                              <ListItem 
+                                key={index}
+                                divider={index < analysisResult.seo_keywords.length - 1}
+                                sx={{
+                                  position: 'relative',
+                                  zIndex: 1,
+                                  overflow: 'hidden',
+                                  '&::after': {
+                                    content: '""',
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 0,
+                                    height: '100%',
+                                    width: `${percentage}%`,
+                                    bgcolor: 'primary.light',
+                                    opacity: 0.1,
+                                    zIndex: -1
+                                  }
+                                }}
+                              >
+                                <Box sx={{ width: '100%' }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                    <KeywordIcon fontSize="small" color="primary" />
+                                    <Typography variant="body1" sx={{ fontWeight: 'medium', flex: 1 }}>
+                                      {typeof keyword === 'object' ? keyword.keyword : keyword}
+                                    </Typography>
+                                  </Box>
+                                  {typeof keyword === 'object' && keyword.volume && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <BarChartIcon fontSize="small" color="action" />
+                                      <Typography variant="body2" color="text.secondary">
+                                        Volume: {keyword.volume.toLocaleString()}
+                                      </Typography>
+                                      <Typography 
+                                        variant="caption" 
+                                        sx={{ 
+                                          ml: 'auto',
+                                          color: 'primary.main',
+                                          bgcolor: 'primary.light',
+                                          px: 1,
+                                          py: 0.5,
+                                          borderRadius: 1,
+                                          opacity: 0.9
+                                        }}
+                                      >
+                                        Rank #{index + 1}
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              </ListItem>
+                            );
+                          })}
+                      </List>
+                    </Box>
+                  ) : (
+                    <Box sx={{ 
+                      height: 400,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 2,
+                      bgcolor: 'background.paper',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider'
+                    }}>
+                      <SearchIcon sx={{ fontSize: 48, color: 'text.disabled' }} />
+                      <Typography color="text.secondary" align="center">
+                        No keyword data available
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
               </Grid>
             </Grid>
           </Paper>
