@@ -206,7 +206,7 @@ const App = () => {
     ? 'https://grail-meter-production.up.railway.app'
     : 'http://localhost:8000');
 
-  const handleFileSelect = (event) => {
+  const handleFileUpload = (event) => {
     const files = Array.from(event.target.files);
     if (files.length > 0) {
       // Validate file types
@@ -300,7 +300,43 @@ const App = () => {
   };
 
   const handleCameraCapture = () => {
-    // Implement camera capture functionality
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // This enables the camera on mobile devices
+    
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        setLoading(true);
+        setError(null);
+        
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const response = await fetch(`${API_URL}/analyze`, {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          const result = await response.json();
+          console.log('Analysis result:', result);
+          setAnalysisResult(result);
+        } catch (err) {
+          console.error('Error analyzing image:', err);
+          setError('Failed to analyze image. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    
+    input.click();
   };
 
   return (
@@ -330,58 +366,53 @@ const App = () => {
           {/* Upload Section */}
           <Box sx={{ 
             display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            gap: 2,
-            mb: 4
+            gap: { xs: 2, sm: 3 },
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: 'stretch'
           }}>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-              id="file-input"
-            />
-            
-            {/* Upload Buttons */}
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2, 
-              flexWrap: 'wrap',
-              justifyContent: 'center'
-            }}>
-              <label htmlFor="file-input">
-                <Button
-                  component="span"
-                  variant="contained"
-                  startIcon={<UploadFileIcon />}
-                  sx={{ 
-                    px: 4,
-                    py: 1.5,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontSize: '1.1rem'
-                  }}
-                >
-                  Choose Files
-                </Button>
-              </label>
-              <Button
-                onClick={handleCameraCapture}
-                variant="outlined"
-                startIcon={<CameraAltIcon />}
-                sx={{ 
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontSize: '1.1rem'
-                }}
-              >
-                Take Photo
-              </Button>
-            </Box>
+            {/* File Upload Button */}
+            <Button
+              variant="outlined"
+              component="label"
+              fullWidth
+              size="large"
+              startIcon={<UploadFileIcon />}
+              sx={{ 
+                py: { xs: 1.5, sm: 2 },
+                borderRadius: 2,
+                borderWidth: 2,
+                '&:hover': {
+                  borderWidth: 2
+                }
+              }}
+            >
+              Upload Image
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={handleFileUpload}
+              />
+            </Button>
+
+            {/* Camera Button */}
+            <Button
+              variant="outlined"
+              fullWidth
+              size="large"
+              onClick={handleCameraCapture}
+              startIcon={<CameraAltIcon />}
+              sx={{ 
+                py: { xs: 1.5, sm: 2 },
+                borderRadius: 2,
+                borderWidth: 2,
+                '&:hover': {
+                  borderWidth: 2
+                }
+              }}
+            >
+              Take Photo
+            </Button>
           </Box>
 
           {/* Image Preview Grid */}
