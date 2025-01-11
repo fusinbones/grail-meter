@@ -29,7 +29,9 @@ app.add_middleware(
         "http://localhost:3000",    # Frontend URL
         "http://localhost:8000",    # Backend URL
         "http://127.0.0.1:8000",    # Backend URL alternative
-        "http://127.0.0.1:3000"     # Frontend URL alternative
+        "http://127.0.0.1:3000",    # Frontend URL alternative
+        "https://grail-meter.vercel.app",  # Production frontend
+        "https://grail-meter-production.up.railway.app"  # Production backend
     ],
     allow_credentials=True,
     allow_methods=["*"],  # Allows all methods
