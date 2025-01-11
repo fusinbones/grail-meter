@@ -297,107 +297,78 @@ const App = () => {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom align="center">
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" gutterBottom align="center">
           Grail Meter
         </Typography>
-        
-        <Paper
-          elevation={3}
-          sx={{
-            p: 3,
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            backdropFilter: 'blur(10px)'
-          }}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-        >
+        <Typography variant="subtitle1" align="center" color="textSecondary" paragraph>
+          Upload your fashion item to get instant market analysis and trend insights
+        </Typography>
+      </Box>
+
+      <Box>
+        {/* File Upload Section */}
+        <GlassPaper>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={{ display: 'none' }}
+            ref={fileInputRef}
+          />
           <Box
             sx={{
               border: '2px dashed #ccc',
               borderRadius: 2,
               p: 3,
               textAlign: 'center',
-              mb: 2,
               cursor: 'pointer',
               '&:hover': {
-                borderColor: '#666'
+                borderColor: 'primary.main',
+                bgcolor: 'rgba(0,0,0,0.01)'
               }
             }}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => fileInputRef.current.click()}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
           >
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageUpload}
-              style={{ display: 'none' }}
-              ref={fileInputRef}
-            />
-            <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
+            <CloudUploadIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
             <Typography variant="h6" gutterBottom>
-              Drop images here or click to select
+              Drop your image here or click to browse
             </Typography>
             <Typography variant="body2" color="textSecondary">
-              Upload multiple photos of your item (front, back, labels, etc.)
+              Supported formats: JPG, PNG, GIF
             </Typography>
           </Box>
+        </GlassPaper>
 
-          {selectedFiles.length > 0 && (
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" gutterBottom>
-                Selected Files:
-              </Typography>
-              {selectedFiles.map((file, index) => (
-                <Chip
-                  key={index}
-                  label={file.name}
-                  onDelete={() => {
-                    const newFiles = selectedFiles.filter((_, i) => i !== index);
-                    setSelectedFiles(newFiles);
-                  }}
-                  sx={{ m: 0.5 }}
-                />
-              ))}
-            </Box>
-          )}
+        {/* Loading State */}
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <CircularProgress />
+          </Box>
+        )}
 
-          <Button
-            variant="contained"
-            onClick={handleAnalyze}
-            disabled={selectedFiles.length === 0 || loading}
-            fullWidth
-            sx={{ mt: 2 }}
-          >
-            {loading ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : (
-              'Analyze Images'
-            )}
-          </Button>
-        </Paper>
-
+        {/* Error Message */}
         {error && (
           <Alert severity="error" sx={{ mt: 2 }}>
             {error}
           </Alert>
         )}
 
+        {/* Analysis Results */}
         {analysisResult && (
           <Box sx={{ mt: 4 }}>
-            <Typography variant="h5" gutterBottom align="center">Analysis Results</Typography>
-            
-            {/* Image Preview and Item Details */}
             <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              <Grid container spacing={3}>
+              <Grid container spacing={4}>
                 {/* Image Preview */}
                 <Grid item xs={12} md={6}>
                   <Box
                     sx={{
                       width: '100%',
-                      height: 400,
-                      borderRadius: 2,
+                      height: 300,
+                      borderRadius: 1,
                       overflow: 'hidden',
                       display: 'flex',
                       justifyContent: 'center',
@@ -426,19 +397,19 @@ const App = () => {
                     <ListItem>
                       <ListItemText 
                         primary="Brand" 
-                        secondary={analysisResult.analysis.brand || 'Unknown'} 
+                        secondary={analysisResult.brand || 'Unknown'} 
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
                         primary="Category" 
-                        secondary={analysisResult.analysis.category || 'Unknown'} 
+                        secondary={analysisResult.category || 'Unknown'} 
                       />
                     </ListItem>
                     <ListItem>
                       <ListItemText 
                         primary="Condition" 
-                        secondary={`${analysisResult.analysis.condition}/10`} 
+                        secondary={`${analysisResult.condition}/10`} 
                       />
                     </ListItem>
                   </List>
@@ -446,97 +417,20 @@ const App = () => {
               </Grid>
             </Paper>
 
-            {/* Trend Graph and Keywords */}
-            <Grid container spacing={3}>
-              {/* Trend Graph */}
-              <Grid item xs={12} md={7}>
-                <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
-                  <Typography variant="h6" gutterBottom>Search Trend</Typography>
-                  {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
-                    <>
-                      {console.log('Trend data:', analysisResult.trend_data)}
-                      <TrendGraph 
-                        title={`${analysisResult.analysis.brand} ${analysisResult.analysis.category}`}
-                        trendData={analysisResult.trend_data}
-                      />
-                    </>
-                  ) : (
-                    <Typography color="textSecondary">
-                      No trend data available
-                    </Typography>
-                  )}
-                </Paper>
-              </Grid>
-
-              {/* SEO Keywords */}
-              <Grid item xs={12} md={5}>
-                <Paper elevation={2} sx={{ p: 2, height: '100%' }}>
-                  <Typography variant="h6" gutterBottom>Top SEO Keywords</Typography>
-                  {analysisResult.keywords && analysisResult.keywords.length > 0 ? (
-                    <List sx={{ pt: 1 }}>
-                      {analysisResult.keywords.map((keyword, index) => (
-                        <ListItem 
-                          key={index}
-                          sx={{ 
-                            flexDirection: 'column', 
-                            alignItems: 'stretch',
-                            py: 1.5
-                          }}
-                        >
-                          <Box sx={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            mb: 0.5
-                          }}>
-                            <Typography 
-                              variant="body1" 
-                              sx={{ 
-                                fontWeight: index === 0 ? 500 : 400,
-                                color: index === 0 ? 'primary.main' : 'text.primary'
-                              }}
-                            >
-                              {keyword.keyword}
-                            </Typography>
-                            <Typography 
-                              variant="body2" 
-                              color="textSecondary"
-                              sx={{ ml: 2 }}
-                            >
-                              {keyword.volume}%
-                            </Typography>
-                          </Box>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={(keyword.volume / analysisResult.keywords[0].volume) * 100}
-                            sx={{ 
-                              height: 6,
-                              borderRadius: 3,
-                              backgroundColor: 'rgba(0,0,0,0.05)',
-                              '& .MuiLinearProgress-bar': {
-                                borderRadius: 3,
-                                backgroundColor: index === 0 ? '#4CAF50' : '#81C784'
-                              }
-                            }}
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  ) : (
-                    <Box sx={{ 
-                      height: '100%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center' 
-                    }}>
-                      <Typography color="textSecondary">
-                        No keyword data available
-                      </Typography>
-                    </Box>
-                  )}
-                </Paper>
-              </Grid>
-            </Grid>
+            {/* SEO Keywords */}
+            <Paper elevation={2} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>SEO Keywords</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {analysisResult.seo_keywords && analysisResult.seo_keywords.map((keyword, index) => (
+                  <Chip 
+                    key={index}
+                    label={keyword}
+                    color={index === 0 ? "primary" : "default"}
+                    variant={index === 0 ? "filled" : "outlined"}
+                  />
+                ))}
+              </Box>
+            </Paper>
           </Box>
         )}
       </Box>
