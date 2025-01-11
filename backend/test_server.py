@@ -2,7 +2,8 @@ import os
 import json
 import logging
 import pandas as pd
-from fastapi import FastAPI, UploadFile, HTTPException
+from typing import List
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pytrends.request import TrendReq
