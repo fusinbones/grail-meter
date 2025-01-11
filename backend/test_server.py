@@ -8,7 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pytrends.request import TrendReq
 import google.generativeai as genai
-from PIL import Image, PIL
+import PIL
+from PIL import Image
 import io
 import re
 from dotenv import load_dotenv
@@ -31,11 +32,14 @@ app.add_middleware(
         "http://127.0.0.1:8000",    # Backend URL alternative
         "http://127.0.0.1:3000",    # Frontend URL alternative
         "https://grail-meter.vercel.app",  # Production frontend
-        "https://grail-meter-production.up.railway.app"  # Production backend
+        "https://grail-meter-production.up.railway.app",  # Production backend
+        "*"  # Allow all origins temporarily for debugging
     ],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly list allowed methods
     allow_headers=["*"],  # Allows all headers
+    expose_headers=["*"],  # Expose all headers
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Load environment variables
