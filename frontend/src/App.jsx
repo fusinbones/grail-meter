@@ -608,17 +608,3 @@ const App = () => {
 };
 
 export default App;
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              </Grid>
-            </Grid>
-          </Paper>
-        </Box>
-      )}
-    </Container>
-  );
-};
-
-export default App;
