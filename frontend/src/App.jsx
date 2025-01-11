@@ -226,7 +226,7 @@ const App = () => {
 
     try {
       console.log('Sending request to backend...');
-      const response = await fetch('http://localhost:8000/upload', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
         method: 'POST',
         body: formData,
       });

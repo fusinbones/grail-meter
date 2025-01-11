@@ -136,6 +136,42 @@ def read_root():
 def test_endpoint():
     return {"message": "Test endpoint is working"}
 
+@app.post("/analyze")
+async def analyze_image(file: UploadFile = File(...)):
+    """
+    Analyze an uploaded image using Google's Gemini Vision model.
+    """
+    try:
+        # Create a temporary file to store the uploaded image
+        image_path = "temp_image.jpg"
+        with open(image_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Get AI analysis for this image
+        result = analyze_image(image_path)
+        logging.info(f"Raw AI analysis: {result}")
+        
+        # Clean the JSON string
+        cleaned_json = clean_json_string(result)
+        logging.info(f"Cleaned analysis: {cleaned_json}")
+        
+        try:
+            analysisJson = json.loads(cleaned_json)
+            return analysisJson
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to parse AI analysis: {str(e)}")
+            return {
+                "brand": "Unknown",
+                "category": "Unknown",
+                "condition": 0,
+                "seo_keywords": []
+            }
+            
+    except Exception as e:
+        logging.error(f"Error processing files: {str(e)}")
+        return {"message": f"Error processing files: {str(e)}", "error": True}
+
 @app.post("/upload")
 async def upload_file(files: List[UploadFile] = File(...)):
     logging.info("Received file upload request")
