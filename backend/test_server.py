@@ -42,7 +42,16 @@ load_dotenv()
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-genai.configure(api_key=GEMINI_API_KEY)
+if not GEMINI_API_KEY:
+    logging.error("GEMINI_API_KEY not found in environment variables!")
+else:
+    logging.info("GEMINI_API_KEY found in environment")
+    
+try:
+    genai.configure(api_key=GEMINI_API_KEY)
+    logging.info("Gemini API configured successfully")
+except Exception as e:
+    logging.error(f"Failed to configure Gemini API: {str(e)}")
 
 def clean_json_string(json_str: str) -> str:
     """Clean and format JSON string from AI response."""
@@ -72,6 +81,9 @@ def analyze_with_gemini(image_path: str) -> str:
     Analyze an image using Google's Gemini Vision model.
     """
     try:
+        if not GEMINI_API_KEY:
+            raise Exception("GEMINI_API_KEY not configured")
+            
         logging.info("Starting Gemini analysis...")
         model = genai.GenerativeModel('gemini-pro-vision')
         
@@ -95,6 +107,9 @@ def analyze_with_gemini(image_path: str) -> str:
         # Generate the analysis
         try:
             response = model.generate_content([prompt, img])
+            if not response or not response.text:
+                raise Exception("Empty response from Gemini API")
+                
             logging.info("Gemini API response received")
             logging.info(f"Response text: {response.text}")
             return response.text
