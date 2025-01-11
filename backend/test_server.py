@@ -72,19 +72,44 @@ def analyze_with_gemini(image_path: str) -> str:
     Analyze an image using Google's Gemini Vision model.
     """
     try:
+        logging.info("Starting Gemini analysis...")
         model = genai.GenerativeModel('gemini-pro-vision')
-        img = Image.open(image_path)
-        response = model.generate_content(
-            ["Analyze this image and provide a JSON response with the following fields: brand (string), category (string), condition (number 1-10), seo_keywords (array of strings). Make it valid JSON.", img]
-        )
-        return response.text
+        
+        # Load and verify the image
+        try:
+            img = PIL.Image.open(image_path)
+            logging.info(f"Image loaded successfully: size={img.size}, mode={img.mode}")
+        except Exception as e:
+            logging.error(f"Error loading image: {str(e)}")
+            raise
+
+        # Prepare the prompt
+        prompt = """Analyze this image and provide a JSON response with the following fields:
+        - brand (string): The brand name visible in the image, or best guess based on style
+        - category (string): Specific category like 'mens hoodie', 'womens dress', etc.
+        - condition (number): Rating from 1-10 of the item's condition
+        - seo_keywords (array): 5 most relevant search terms for this item
+        
+        Format as valid JSON only, no other text."""
+
+        # Generate the analysis
+        try:
+            response = model.generate_content([prompt, img])
+            logging.info("Gemini API response received")
+            logging.info(f"Response text: {response.text}")
+            return response.text
+        except Exception as e:
+            logging.error(f"Error in Gemini API call: {str(e)}")
+            raise
+
     except Exception as e:
-        logging.error(f"Error in Gemini analysis: {str(e)}")
+        logging.error(f"Error in analyze_with_gemini: {str(e)}")
         return json.dumps({
             "brand": "Unknown",
             "category": "Unknown",
             "condition": 0,
-            "seo_keywords": []
+            "seo_keywords": [],
+            "error": str(e)
         })
 
 def generate_synthetic_trend_data():
@@ -150,6 +175,7 @@ async def analyze_image_route(file: UploadFile = File(description="Image file to
                 if not content:
                     raise HTTPException(status_code=400, detail="Empty file received")
                 
+                logging.info(f"File size: {len(content)} bytes")
                 temp_file.write(content)
                 temp_file.flush()
                 
@@ -163,6 +189,8 @@ async def analyze_image_route(file: UploadFile = File(description="Image file to
                 
                 try:
                     analysisJson = json.loads(cleaned_json)
+                    if all(v in ["Unknown", 0, []] for v in analysisJson.values()):
+                        logging.error("All values are default, likely an error occurred")
                     return analysisJson
                 except json.JSONDecodeError as e:
                     logging.error(f"Failed to parse AI analysis: {str(e)}")
@@ -170,7 +198,8 @@ async def analyze_image_route(file: UploadFile = File(description="Image file to
                         "brand": "Unknown",
                         "category": "Unknown",
                         "condition": 0,
-                        "seo_keywords": []
+                        "seo_keywords": [],
+                        "error": "Failed to parse AI response"
                     }
             finally:
                 # Clean up the temporary file

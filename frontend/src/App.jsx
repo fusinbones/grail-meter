@@ -198,9 +198,9 @@ const App = () => {
 
     setLoading(true);
     setError(null);
+    setAnalysisResult(null);
 
     const formData = new FormData();
-    // The key must match the parameter name in the FastAPI route
     formData.append('file', file, file.name);
 
     try {
@@ -208,7 +208,6 @@ const App = () => {
       const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
         method: 'POST',
         body: formData,
-        // Don't set Content-Type header, let the browser set it with the boundary
         headers: {
           'Accept': 'application/json',
         },
@@ -221,6 +220,17 @@ const App = () => {
 
       const result = await response.json();
       console.log("Analysis result:", result);
+      
+      if (result.error) {
+        setError(`Analysis error: ${result.error}`);
+        return;
+      }
+      
+      if (result.brand === "Unknown" && result.category === "Unknown" && result.condition === 0) {
+        setError("Failed to analyze image. Please try again with a clearer image.");
+        return;
+      }
+
       setAnalysisResult(result);
     } catch (error) {
       console.error("Error analyzing images:", error);
