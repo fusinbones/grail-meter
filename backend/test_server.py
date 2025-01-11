@@ -12,6 +12,7 @@ from PIL import Image
 import io
 import re
 from dotenv import load_dotenv
+import signal
 
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
