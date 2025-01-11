@@ -10,6 +10,7 @@ import google.generativeai as genai
 from PIL import Image
 import io
 import re
+from dotenv import load_dotenv
 
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
