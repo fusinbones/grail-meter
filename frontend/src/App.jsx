@@ -278,6 +278,13 @@ const App = () => {
         result.trend_data = [];
       }
 
+      // Transform seo_keywords to simple strings if they're objects
+      if (result.seo_keywords && Array.isArray(result.seo_keywords)) {
+        result.seo_keywords = result.seo_keywords.map(kw => 
+          typeof kw === 'object' && kw !== null ? kw.keyword : String(kw)
+        );
+      }
+
       console.log('Processed analysis result:', result);
       setAnalysisResult(result);
     } catch (err) {
