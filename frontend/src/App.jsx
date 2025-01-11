@@ -1,21 +1,22 @@
 import React, { useState, useRef } from 'react';
 import {
-  Box,
-  Button,
   Container,
+  Box,
   Typography,
   Paper,
+  Button,
   Grid,
   List,
   ListItem,
   ListItemText,
   LinearProgress,
   Alert,
-  Chip,
-  CircularProgress
+  CircularProgress,
+  IconButton,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CloseIcon from '@mui/icons-material/Close';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -186,64 +187,22 @@ const TrendGraph = ({ title, trendData }) => {
 };
 
 const App = () => {
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(null);
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setLoading(true);
+  const handleImageUpload = (event) => {
+    const files = Array.from(event.target.files);
+    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
     setError(null);
-    setAnalysisResult(null);
-
-    const formData = new FormData();
-    formData.append('file', file, file.name);
-
-    try {
-      console.log('Sending request to backend...');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(`HTTP error! status: ${response.status}${errorData ? ` - ${JSON.stringify(errorData)}` : ''}`);
-      }
-
-      const result = await response.json();
-      console.log("Analysis result:", result);
-      
-      if (result.error) {
-        setError(`Analysis error: ${result.error}`);
-        return;
-      }
-      
-      if (result.brand === "Unknown" && result.category === "Unknown" && result.condition === 0) {
-        setError("Failed to analyze image. Please try again with a clearer image.");
-        return;
-      }
-
-      setAnalysisResult(result);
-    } catch (error) {
-      console.error("Error analyzing images:", error);
-      setError(`Error analyzing images: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleDrop = (event) => {
     event.preventDefault();
     const files = Array.from(event.dataTransfer.files);
-    setSelectedFiles(files);
+    setSelectedFiles(prevFiles => [...prevFiles, ...files]);
     setError(null);
   };
 
@@ -253,47 +212,37 @@ const App = () => {
 
   const handleAnalyze = async () => {
     if (selectedFiles.length === 0) {
-      setError("Please select at least one image");
+      setError('Please select at least one image');
       return;
     }
 
     setLoading(true);
     setError(null);
-    setAnalysisResult(null);
-
-    const formData = new FormData();
-    selectedFiles.forEach((file) => {
-      formData.append('files', file);
-    });
 
     try {
-      console.log('Sending request to backend...');
+      const formData = new FormData();
+      formData.append('file', selectedFiles[0]);
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
         method: 'POST',
         body: formData,
       });
 
-      console.log('Response received:', response);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error('Failed to analyze image');
       }
 
-      const result = await response.json();
-      console.log('Parsed result:', result);
-      
-      if (result.error) {
-        setError(result.message);
-      } else if (result.keywords === "Unable to fetch") {
-        setError("Unable to fetch keyword data. Please try again.");
-      } else {
-        setAnalysisResult(result);
-      }
+      const data = await response.json();
+      setAnalysisResult(data);
     } catch (err) {
-      console.error('Error details:', err);
-      setError(`Error analyzing images: ${err.message}`);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRemoveImage = (index) => {
+    setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   };
 
   return (
@@ -313,9 +262,8 @@ const App = () => {
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
             backdropFilter: 'blur(10px)'
           }}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
         >
+          {/* Upload Box */}
           <Box
             sx={{
               border: '2px dashed #ccc',
@@ -328,31 +276,91 @@ const App = () => {
                 borderColor: '#666'
               }
             }}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
             onClick={() => fileInputRef.current?.click()}
           >
             <input
               type="file"
               accept="image/*"
+              multiple
               onChange={handleImageUpload}
               style={{ display: 'none' }}
               ref={fileInputRef}
             />
             <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 1 }} />
             <Typography variant="h6" gutterBottom>
-              Drop image here or click to select
+              Drop images here or click to select
             </Typography>
             <Typography variant="body2" color="textSecondary">
               Supported formats: JPG, PNG, GIF
             </Typography>
           </Box>
-        </Paper>
 
-        {/* Loading State */}
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-            <CircularProgress />
-          </Box>
-        )}
+          {/* Selected Images Preview */}
+          {selectedFiles.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Grid container spacing={2}>
+                {selectedFiles.map((file, index) => (
+                  <Grid item xs={6} sm={4} md={3} key={index}>
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        paddingTop: '100%',
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        bgcolor: 'rgba(0,0,0,0.03)'
+                      }}
+                    >
+                      <img
+                        src={URL.createObjectURL(file)}
+                        alt={`Selected ${index + 1}`}
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                      />
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage(index);
+                        }}
+                        sx={{
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          bgcolor: 'rgba(255,255,255,0.9)',
+                          '&:hover': {
+                            bgcolor: 'rgba(255,255,255,1)'
+                          }
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+              
+              {/* Analyze Button */}
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                <Button
+                  variant="contained"
+                  onClick={handleAnalyze}
+                  disabled={loading}
+                  startIcon={loading ? <CircularProgress size={20} /> : null}
+                >
+                  {loading ? 'Analyzing...' : 'Analyze Images'}
+                </Button>
+              </Box>
+            </Box>
+          )}
+        </Paper>
 
         {/* Error Message */}
         {error && (
@@ -443,7 +451,15 @@ const App = () => {
                 <Paper elevation={3} sx={{ p: 3, height: '100%', minHeight: { xs: 400, md: 500 } }}>
                   <Typography variant="h6" gutterBottom>Market Trend</Typography>
                   {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
-                    <Box sx={{ width: '100%', height: 'calc(100% - 40px)' }}>
+                    <Box sx={{ 
+                      width: '100%', 
+                      height: 'calc(100% - 40px)',
+                      '& .recharts-wrapper': {
+                        '& .recharts-xAxis .recharts-cartesian-axis-tick-value': {
+                          transform: 'translateY(5px)'
+                        }
+                      }
+                    }}>
                       <TrendGraph 
                         title={`${analysisResult.brand} ${analysisResult.category}`}
                         trendData={analysisResult.trend_data}
