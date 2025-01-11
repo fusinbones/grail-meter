@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pytrends.request import TrendReq
 import google.generativeai as genai
-from PIL import Image
+from PIL import Image, PIL
 import io
 import re
 from dotenv import load_dotenv
