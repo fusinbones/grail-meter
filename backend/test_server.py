@@ -167,66 +167,103 @@ def get_trend_data(search_term):
         import pandas as pd
         from datetime import datetime, timedelta
 
-        logging.info(f"Initializing PyTrends for search term: {search_term}")
+        logging.info(f"[PyTrends] Initializing for search term: {search_term}")
         
-        # Initialize PyTrends with proper configuration
-        pytrends = TrendReq(hl='en-US', tz=360, timeout=(10,25), retries=2, backoff_factor=0.1)
+        # Initialize PyTrends with more robust settings
+        pytrends = TrendReq(
+            hl='en-US',
+            tz=360,
+            timeout=(30,30),  # Increased timeout
+            retries=3,        # More retries
+            backoff_factor=1.5  # Longer backoff between retries
+        )
         
         # Build the payload with proper parameters
         kw_list = [search_term]
         timeframe = 'today 12-m'  # Last 12 months
         
-        logging.info(f"Building payload for PyTrends with search term: {search_term}")
-        pytrends.build_payload(
-            kw_list=kw_list,
-            cat=0,  # All categories
-            timeframe=timeframe,
-            geo='',  # Worldwide
-            gprop=''  # Web search
-        )
-        
-        # Get interest over time
-        logging.info("Fetching interest over time data")
-        interest_over_time_df = pytrends.interest_over_time()
-        
-        if interest_over_time_df.empty:
-            logging.warning(f"No trend data found for {search_term}")
-            return {
-                'trend_data': [],
-                'keywords_data': []
-            }
+        logging.info(f"[PyTrends] Building payload with search term: {search_term}")
+        try:
+            pytrends.build_payload(
+                kw_list=kw_list,
+                cat=0,  # All categories
+                timeframe=timeframe,
+                geo='US',  # Focus on US market
+                gprop=''  # Web search
+            )
+        except Exception as e:
+            logging.error(f"[PyTrends] Error building payload: {str(e)}", exc_info=True)
+            raise Exception(f"Failed to build PyTrends payload: {str(e)}")
             
-        # Get related queries for search volume
-        logging.info("Fetching related queries data")
-        related_queries = pytrends.related_queries()
+        # Get interest over time with error handling
+        logging.info("[PyTrends] Fetching interest over time data")
+        try:
+            interest_over_time_df = pytrends.interest_over_time()
+            if interest_over_time_df is None or interest_over_time_df.empty:
+                logging.warning(f"[PyTrends] No trend data found for {search_term}")
+                return {
+                    'trend_data': [],
+                    'keywords_data': []
+                }
+            logging.info(f"[PyTrends] Retrieved {len(interest_over_time_df)} data points")
+        except Exception as e:
+            logging.error(f"[PyTrends] Error getting interest over time: {str(e)}", exc_info=True)
+            raise Exception(f"Failed to get trend data: {str(e)}")
+            
+        # Get related queries with error handling
+        logging.info("[PyTrends] Fetching related queries data")
+        try:
+            related_queries = pytrends.related_queries()
+            if not related_queries or search_term not in related_queries:
+                logging.warning(f"[PyTrends] No related queries found for {search_term}")
+        except Exception as e:
+            logging.error(f"[PyTrends] Error getting related queries: {str(e)}", exc_info=True)
+            related_queries = None
         
-        # Transform the trend data
+        # Transform the trend data with validation
         trend_data = []
-        for date, row in interest_over_time_df.iterrows():
-            trend_data.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'volume': int(row[search_term])
-            })
-            
-        # Get related keywords with their volumes
-        keywords_data = []
-        if related_queries and search_term in related_queries:
-            top_queries = related_queries[search_term]['top']
-            if isinstance(top_queries, pd.DataFrame) and not top_queries.empty:
-                for _, row in top_queries.iterrows():
-                    keywords_data.append({
-                        'keyword': str(row['query']),
-                        'volume': int(row['value'])
+        try:
+            for date, row in interest_over_time_df.iterrows():
+                if search_term in row and pd.notna(row[search_term]):
+                    trend_data.append({
+                        'date': date.strftime('%Y-%m-%d'),
+                        'volume': int(row[search_term])
                     })
+            logging.info(f"[PyTrends] Transformed {len(trend_data)} trend data points")
+        except Exception as e:
+            logging.error(f"[PyTrends] Error transforming trend data: {str(e)}", exc_info=True)
+            trend_data = []
+            
+        # Get related keywords with validation
+        keywords_data = []
+        try:
+            if related_queries and search_term in related_queries:
+                top_queries = related_queries[search_term].get('top')
+                if isinstance(top_queries, pd.DataFrame) and not top_queries.empty:
+                    for _, row in top_queries.iterrows():
+                        try:
+                            keywords_data.append({
+                                'keyword': str(row['query']),
+                                'volume': int(row['value'])
+                            })
+                        except (ValueError, KeyError, TypeError) as e:
+                            logging.error(f"[PyTrends] Error processing keyword row: {str(e)}")
+                            continue
+            logging.info(f"[PyTrends] Processed {len(keywords_data)} keywords")
+        except Exception as e:
+            logging.error(f"[PyTrends] Error processing keywords: {str(e)}", exc_info=True)
+            keywords_data = []
                 
-        logging.info(f"Successfully retrieved trend data with {len(trend_data)} points and {len(keywords_data)} keywords")
-        return {
+        result = {
             'trend_data': trend_data,
             'keywords_data': keywords_data
         }
+        logging.info(f"[PyTrends] Final result: {len(trend_data)} trend points, {len(keywords_data)} keywords")
+        return result
         
     except Exception as e:
-        logging.error(f"Error getting trend data: {str(e)}", exc_info=True)
+        logging.error(f"[PyTrends] Critical error in get_trend_data: {str(e)}", exc_info=True)
+        # Return empty data but don't fail completely
         return {
             'trend_data': [],
             'keywords_data': []
