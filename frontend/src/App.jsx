@@ -22,9 +22,6 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import KeywordIcon from '@mui/icons-material/Key';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -202,11 +199,11 @@ const App = () => {
   const [error, setError] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD 
+  const API_URL = import.meta.env.PROD 
     ? 'https://grail-meter-production.up.railway.app'
-    : 'http://localhost:8000');
+    : 'http://localhost:8000';
 
-  const handleFileUpload = (event) => {
+  const handleFileSelect = (event) => {
     const files = Array.from(event.target.files);
     if (files.length > 0) {
       // Validate file types
@@ -238,7 +235,7 @@ const App = () => {
 
     setLoading(true);
     setError(null);
-    setAnalysisResult(null);
+    setAnalysisResult(null); // Reset previous results
 
     try {
       const formData = new FormData();
@@ -246,43 +243,22 @@ const App = () => {
         formData.append('files', file);
       });
 
-      console.log('Sending request to:', API_URL);
-      
       const response = await fetch(`${API_URL}/analyze`, {
         method: 'POST',
         body: formData,
       });
+
+      const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(result.detail || 'Failed to analyze images');
       }
-      
-      const result = await response.json();
-      console.log('[App] Raw analysis result:', result);
-      
-      // Ensure we have the correct data structure
+
       if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response format');
+        throw new Error('Invalid response from server');
       }
-      
-      // Transform the data structure if needed
-      const transformedResult = {
-        ...result,
-        trend_data: Array.isArray(result.trend_data) ? result.trend_data.map(point => ({
-          date: point.date,
-          volume: parseInt(point.volume) || 0
-        })) : [],
-        seo_keywords: Array.isArray(result.keywords) ? result.keywords.map(kw => ({
-          keyword: typeof kw === 'object' ? kw.keyword : kw,
-          volume: parseInt(typeof kw === 'object' ? kw.volume : 0) || 0
-        })) : []
-      };
-      
-      console.log('[App] Transformed result:', transformedResult);
-      console.log('[App] Trend data length:', transformedResult.trend_data.length);
-      console.log('[App] Keywords length:', transformedResult.seo_keywords.length);
-      
-      setAnalysisResult(transformedResult);
+
+      setAnalysisResult(result);
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err.message || 'An error occurred during analysis');
@@ -293,43 +269,7 @@ const App = () => {
   };
 
   const handleCameraCapture = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment'; // This enables the camera on mobile devices
-    
-    input.onchange = async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        setLoading(true);
-        setError(null);
-        
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-          
-          const response = await fetch(`${API_URL}/analyze`, {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          
-          const result = await response.json();
-          console.log('Analysis result:', result);
-          setAnalysisResult(result);
-        } catch (err) {
-          console.error('Error analyzing image:', err);
-          setError('Failed to analyze image. Please try again.');
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-    
-    input.click();
+    // Implement camera capture functionality
   };
 
   return (
@@ -350,7 +290,7 @@ const App = () => {
         sx={{ 
           p: 4, 
           borderRadius: 3,
-          backgroundColor: '#ffffff',
+          bgcolor: 'background.default',
           border: '1px solid',
           borderColor: 'divider'
         }}
@@ -359,53 +299,58 @@ const App = () => {
           {/* Upload Section */}
           <Box sx={{ 
             display: 'flex', 
-            gap: { xs: 2, sm: 3 },
-            flexDirection: { xs: 'column', sm: 'row' },
-            alignItems: 'stretch'
+            flexDirection: 'column', 
+            alignItems: 'center',
+            gap: 2,
+            mb: 4
           }}>
-            {/* File Upload Button */}
-            <Button
-              variant="outlined"
-              component="label"
-              fullWidth
-              size="large"
-              startIcon={<UploadFileIcon />}
-              sx={{ 
-                py: { xs: 1.5, sm: 2 },
-                borderRadius: 2,
-                borderWidth: 2,
-                '&:hover': {
-                  borderWidth: 2
-                }
-              }}
-            >
-              Upload Image
-              <input
-                type="file"
-                hidden
-                accept="image/*"
-                onChange={handleFileUpload}
-              />
-            </Button>
-
-            {/* Camera Button */}
-            <Button
-              variant="outlined"
-              fullWidth
-              size="large"
-              onClick={handleCameraCapture}
-              startIcon={<CameraAltIcon />}
-              sx={{ 
-                py: { xs: 1.5, sm: 2 },
-                borderRadius: 2,
-                borderWidth: 2,
-                '&:hover': {
-                  borderWidth: 2
-                }
-              }}
-            >
-              Take Photo
-            </Button>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+              id="file-input"
+            />
+            
+            {/* Upload Buttons */}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2, 
+              flexWrap: 'wrap',
+              justifyContent: 'center'
+            }}>
+              <label htmlFor="file-input">
+                <Button
+                  component="span"
+                  variant="contained"
+                  startIcon={<UploadFileIcon />}
+                  sx={{ 
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontSize: '1.1rem'
+                  }}
+                >
+                  Choose Files
+                </Button>
+              </label>
+              <Button
+                onClick={handleCameraCapture}
+                variant="outlined"
+                startIcon={<CameraAltIcon />}
+                sx={{ 
+                  px: 4,
+                  py: 1.5,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontSize: '1.1rem'
+                }}
+              >
+                Take Photo
+              </Button>
+            </Box>
           </Box>
 
           {/* Image Preview Grid */}
@@ -493,7 +438,7 @@ const App = () => {
             mt: 4,
             p: 4,
             borderRadius: 3,
-            backgroundColor: '#ffffff',
+            bgcolor: 'background.default',
             border: '1px solid',
             borderColor: 'divider',
             display: 'flex',
@@ -518,9 +463,7 @@ const App = () => {
           severity="error" 
           sx={{ 
             mt: 3,
-            borderRadius: 2,
-            width: '100%',
-            backgroundColor: '#fff3f3'
+            borderRadius: 2
           }}
           action={
             <Button 
@@ -545,7 +488,7 @@ const App = () => {
             align="center"
             sx={{ 
               fontWeight: 'medium',
-              color: '#1976d2',
+              color: 'primary.main',
               mb: 4
             }}
           >
@@ -558,7 +501,7 @@ const App = () => {
             sx={{ 
               p: 4,
               borderRadius: 3,
-              backgroundColor: '#ffffff',
+              bgcolor: 'background.default',
               border: '1px solid',
               borderColor: 'divider'
             }}
@@ -575,7 +518,7 @@ const App = () => {
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    backgroundColor: '#ffffff',
+                    bgcolor: 'background.paper',
                     border: '1px solid',
                     borderColor: 'divider'
                   }}
@@ -583,7 +526,7 @@ const App = () => {
                   {selectedFiles[0] && (
                     <img
                       src={URL.createObjectURL(selectedFiles[0])}
-                      alt="Analyzed item"
+                      alt="Uploaded item"
                       style={{
                         width: '100%',
                         height: '100%',
@@ -602,9 +545,8 @@ const App = () => {
                   flexDirection: 'column',
                   gap: 3
                 }}>
-                  {/* Basic Details */}
                   {Object.entries(analysisResult)
-                    .filter(([key]) => !['trend_data', 'seo_keywords'].includes(key))
+                    .filter(([key]) => key !== 'trend_data')
                     .map(([key, value]) => (
                       <Box key={key}>
                         <Typography 
@@ -612,7 +554,7 @@ const App = () => {
                           color="text.secondary"
                           sx={{ mb: 1, textTransform: 'capitalize' }}
                         >
-                          {key.replace(/_/g, ' ')}
+                          {key}
                         </Typography>
                         <Typography 
                           variant="h6"
@@ -630,127 +572,42 @@ const App = () => {
             </Grid>
           </Paper>
 
-          {/* Trend Graph and SEO Keywords */}
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              mt: 4,
-              p: { xs: 2, sm: 4 },
-              borderRadius: 3,
-              backgroundColor: '#ffffff',
-              border: '1px solid',
-              borderColor: 'divider'
-            }}
-          >
-            <Grid container spacing={2}>
-              {/* Trend Graph */}
-              <Grid item xs={12} md={8}>
-                <Box sx={{ 
-                  height: { xs: '300px', sm: '400px' },
-                  bgcolor: 'background.paper',
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden',
-                  p: 2
-                }}>
-                  {console.log('[App] Rendering TrendGraph with data:', analysisResult?.trend_data)}
-                  <TrendGraph trendData={analysisResult?.trend_data || []} />
-                </Box>
-              </Grid>
+          {/* Trend Graph */}
+          {analysisResult.trend_data && analysisResult.trend_data.length > 0 && (
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                mt: 4,
+                p: 4,
+                borderRadius: 3,
+                bgcolor: 'background.default',
+                border: '1px solid',
+                borderColor: 'divider'
+              }}
+            >
+              <Typography 
+                variant="h5" 
+                gutterBottom 
+                sx={{ 
+                  mb: 3,
+                  fontWeight: 'medium'
+                }}
+              >
+                Market Trend Analysis
+              </Typography>
+              <TrendGraph 
+                title={`${analysisResult.brand} ${analysisResult.category} Trend`}
+                trendData={analysisResult.trend_data}
+              />
+            </Paper>
+          )}
+        </Box>
+      )}
+    </Container>
+  );
+};
 
-              {/* SEO Keywords */}
-              <Grid item xs={12} md={4}>
-                <Box sx={{ 
-                  height: { xs: 'auto', md: '400px' },
-                  bgcolor: 'background.paper',
-                  borderRadius: 1,
-                  border: '1px solid',
-                  borderColor: 'divider',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}>
-                  <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="h6" sx={{ fontSize: '1rem' }}>
-                      Search Volume
-                    </Typography>
-                  </Box>
-                  
-                  {analysisResult?.seo_keywords?.length > 0 ? (
-                    <List sx={{ 
-                      flex: 1,
-                      overflow: 'auto',
-                      py: 0
-                    }}>
-                      {analysisResult.seo_keywords
-                        .sort((a, b) => b.volume - a.volume)
-                        .map((item, index) => (
-                          <ListItem
-                            key={index}
-                            divider={index < analysisResult.seo_keywords.length - 1}
-                            sx={{
-                              px: 2,
-                              py: 1.5,
-                            }}
-                          >
-                            <Box sx={{ width: '100%' }}>
-                              <Box sx={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'space-between',
-                                mb: 1
-                              }}>
-                                <Typography 
-                                  variant="body1" 
-                                  sx={{ 
-                                    fontWeight: 'medium',
-                                    color: 'text.primary'
-                                  }}
-                                >
-                                  {item.keyword}
-                                </Typography>
-                                <Typography 
-                                  variant="body2"
-                                  sx={{ 
-                                    color: 'primary.main',
-                                    fontWeight: 'medium',
-                                    ml: 2
-                                  }}
-                                >
-                                  {item.volume.toLocaleString()}
-                                </Typography>
-                              </Box>
-                              <Box sx={{ 
-                                width: '100%',
-                                height: 4,
-                                bgcolor: 'grey.100',
-                                borderRadius: 2,
-                                overflow: 'hidden'
-                              }}>
-                                <Box
-                                  sx={{
-                                    width: `${(item.volume / Math.max(...analysisResult.seo_keywords.map(k => k.volume || 0))) * 100}%`,
-                                    height: '100%',
-                                    bgcolor: 'primary.main',
-                                    transition: 'width 0.5s ease-in-out'
-                                  }}
-                                />
-                              </Box>
-                            </Box>
-                          </ListItem>
-                        ))}
-                    </List>
-                  ) : (
-                    <Box sx={{ 
-                      flex: 1,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      p: 3
-                    }}>
-                      <Typography color="text.secondary">
-                        No search volume data available
+export default App;
                       </Typography>
                     </Box>
                   )}
