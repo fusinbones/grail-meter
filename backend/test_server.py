@@ -183,51 +183,51 @@ async def analyze_image_route(file: UploadFile = File(description="Image file to
     Analyze an uploaded image using Google's Gemini Vision model.
     """
     try:
-        logging.info(f"Received file: {file.filename}, content_type: {file.content_type}")
-        
         # Validate file type
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
         
-        # Create a temporary file to store the uploaded image
+        # Create a temporary file to store the upload
         with NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
             try:
-                content = await file.read()
-                if not content:
-                    raise HTTPException(status_code=400, detail="Empty file received")
-                
-                logging.info(f"File size: {len(content)} bytes")
-                temp_file.write(content)
+                # Read and write the file
+                contents = await file.read()
+                temp_file.write(contents)
                 temp_file.flush()
                 
-                # Get AI analysis for this image
-                result = analyze_with_gemini(temp_file.name)
-                logging.info(f"Raw AI analysis: {result}")
+                logging.info(f"Temporary file created: {temp_file.name}")
                 
-                # Clean the JSON string
-                cleaned_json = clean_json_string(result)
-                logging.info(f"Cleaned analysis: {cleaned_json}")
+                # Get the analysis from Gemini
+                analysis_text = analyze_with_gemini(temp_file.name)
+                analysis_json = json.loads(clean_json_string(analysis_text))
                 
-                try:
-                    analysisJson = json.loads(cleaned_json)
-                    if all(v in ["Unknown", 0, []] for v in analysisJson.values()):
-                        logging.error("All values are default, likely an error occurred")
-                    return analysisJson
-                except json.JSONDecodeError as e:
-                    logging.error(f"Failed to parse AI analysis: {str(e)}")
-                    return {
-                        "brand": "Unknown",
-                        "category": "Unknown",
-                        "condition": 0,
-                        "seo_keywords": [],
-                        "error": "Failed to parse AI response"
-                    }
+                # Generate trend data
+                trend_data = []
+                if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
+                    search_term = f"{analysis_json['brand']} {analysis_json['category']}"
+                    trend_data = generate_synthetic_trend_data()
+                
+                # Create the response
+                response = {
+                    **analysis_json,  # Include all fields from analysis
+                    "trend_data": trend_data
+                }
+                
+                return response
+                
+            except Exception as e:
+                logging.error(f"Error processing file: {str(e)}")
+                raise HTTPException(status_code=500, detail=str(e))
             finally:
                 # Clean up the temporary file
-                os.unlink(temp_file.name)
-            
+                try:
+                    os.unlink(temp_file.name)
+                    logging.info(f"Temporary file deleted: {temp_file.name}")
+                except Exception as e:
+                    logging.error(f"Error deleting temporary file: {str(e)}")
+    
     except Exception as e:
-        logging.error(f"Error processing files: {str(e)}")
+        logging.error(f"Error in analyze_image_route: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")

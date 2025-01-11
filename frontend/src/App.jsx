@@ -436,28 +436,64 @@ const App = () => {
               </Grid>
             </Paper>
 
-            {/* SEO Keywords */}
-            <Paper elevation={3} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>SEO Keywords</Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {analysisResult.seo_keywords && analysisResult.seo_keywords.map((keyword, index) => (
-                  <Chip 
-                    key={index}
-                    label={keyword}
-                    color={index === 0 ? "primary" : "default"}
-                    sx={{ 
-                      fontSize: '1rem',
-                      py: 2.5,
-                      bgcolor: index === 0 ? 'primary.main' : 'rgba(0,0,0,0.08)',
-                      color: index === 0 ? 'white' : 'text.primary',
-                      '&:hover': {
-                        bgcolor: index === 0 ? 'primary.dark' : 'rgba(0,0,0,0.12)'
-                      }
-                    }}
-                  />
-                ))}
-              </Box>
-            </Paper>
+            {/* SEO Keywords and Trend Graph */}
+            <Grid container spacing={3}>
+              {/* Trend Graph */}
+              <Grid item xs={12} md={7}>
+                <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
+                  <Typography variant="h6" gutterBottom>Market Trend</Typography>
+                  {analysisResult.trend_data && analysisResult.trend_data.length > 0 ? (
+                    <Box sx={{ height: 300 }}>
+                      <TrendGraph 
+                        title={`${analysisResult.brand} ${analysisResult.category}`}
+                        trendData={analysisResult.trend_data}
+                      />
+                    </Box>
+                  ) : (
+                    <Box sx={{ 
+                      height: 300, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      flexDirection: 'column',
+                      gap: 2
+                    }}>
+                      <Typography variant="body1" color="textSecondary">
+                        No trend data available
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        Try a different search term or check back later
+                      </Typography>
+                    </Box>
+                  )}
+                </Paper>
+              </Grid>
+
+              {/* SEO Keywords */}
+              <Grid item xs={12} md={5}>
+                <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
+                  <Typography variant="h6" gutterBottom>SEO Keywords</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {analysisResult.seo_keywords && analysisResult.seo_keywords.map((keyword, index) => (
+                      <Chip 
+                        key={index}
+                        label={keyword}
+                        color={index === 0 ? "primary" : "default"}
+                        sx={{ 
+                          fontSize: '1rem',
+                          py: 2.5,
+                          bgcolor: index === 0 ? 'primary.main' : 'rgba(0,0,0,0.08)',
+                          color: index === 0 ? 'white' : 'text.primary',
+                          '&:hover': {
+                            bgcolor: index === 0 ? 'primary.dark' : 'rgba(0,0,0,0.12)'
+                          }
+                        }}
+                      />
+                    ))}
+                  </Box>
+                </Paper>
+              </Grid>
+            </Grid>
           </Box>
         )}
       </Box>
