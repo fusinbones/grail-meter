@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import re
 from typing import List
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +20,6 @@ import pandas as pd
 import base64
 import signal
 import sys
-import re
 
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
@@ -40,11 +40,32 @@ app.add_middleware(
 # Load environment variables
 load_dotenv()
 
-# Initialize Google Gemini
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+# Configure Gemini API
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+genai.configure(api_key=GEMINI_API_KEY)
 
-# Initialize Pytrends with minimal settings
-pytrends = TrendReq(hl='en-US')
+def clean_json_string(json_str: str) -> str:
+    """Clean and format JSON string from AI response."""
+    try:
+        # Find the first { and last }
+        start = json_str.find('{')
+        end = json_str.rfind('}') + 1
+        if start == -1 or end == 0:
+            return "{}"
+        
+        # Extract the JSON part
+        json_part = json_str[start:end]
+        
+        # Remove any markdown formatting
+        json_part = re.sub(r'```json|```', '', json_part)
+        
+        # Clean up any remaining non-JSON characters
+        json_part = re.sub(r'[^\x20-\x7E]', '', json_part)
+        
+        return json_part.strip()
+    except Exception as e:
+        logging.error(f"Error cleaning JSON string: {str(e)}")
+        return "{}"
 
 def analyze_with_gemini(image_path: str) -> str:
     """
@@ -65,11 +86,6 @@ def analyze_with_gemini(image_path: str) -> str:
             "condition": 0,
             "seo_keywords": []
         })
-
-def clean_json_string(json_string):
-    # Clean the JSON string
-    cleaned_json = re.sub(r'```json\n|```', '', json_string).strip()
-    return cleaned_json
 
 def generate_synthetic_trend_data():
     """Generate synthetic trend data for the last 12 months."""
@@ -223,6 +239,7 @@ async def upload_file(files: List[UploadFile] = File(...)):
             # Create search terms
             search_term = f"{brand} {category}"
             
+            pytrends = TrendReq(hl='en-US')
             pytrends.build_payload(
                 kw_list=[search_term],
                 timeframe='today 12-m',
