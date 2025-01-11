@@ -1,23 +1,24 @@
+import os
+import json
+import logging
+from typing import List
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pytrends.request import TrendReq
 import google.generativeai as genai
 from PIL import Image
-import io
-import json
-import os
-import requests
-import logging
-import re
-from pytrends.request import TrendReq
-import asyncio
-import pandas as pd
-from typing import List
-import base64
-import signal
-import sys
+import PIL
 import psutil
 import math
 from dotenv import load_dotenv
+from tempfile import NamedTemporaryFile
+import io
+import requests
+import asyncio
+import pandas as pd
+import base64
+import signal
+import sys
 
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
@@ -119,35 +120,41 @@ async def analyze_image_route(file: UploadFile = File(...)):
     Analyze an uploaded image using Google's Gemini Vision model.
     """
     try:
+        logging.info(f"Received file: {file.filename}")
+        
+        # Validate file type
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
         # Create a temporary file to store the uploaded image
-        image_path = "temp_image.jpg"
-        with open(image_path, "wb") as buffer:
+        with NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
             content = await file.read()
-            buffer.write(content)
-        
-        # Get AI analysis for this image
-        result = analyze_with_gemini(image_path)
-        logging.info(f"Raw AI analysis: {result}")
-        
-        # Clean the JSON string
-        cleaned_json = clean_json_string(result)
-        logging.info(f"Cleaned analysis: {cleaned_json}")
-        
-        try:
-            analysisJson = json.loads(cleaned_json)
-            return analysisJson
-        except json.JSONDecodeError as e:
-            logging.error(f"Failed to parse AI analysis: {str(e)}")
-            return {
-                "brand": "Unknown",
-                "category": "Unknown",
-                "condition": 0,
-                "seo_keywords": []
-            }
+            temp_file.write(content)
+            temp_file.flush()
+            
+            # Get AI analysis for this image
+            result = analyze_with_gemini(temp_file.name)
+            logging.info(f"Raw AI analysis: {result}")
+            
+            # Clean the JSON string
+            cleaned_json = clean_json_string(result)
+            logging.info(f"Cleaned analysis: {cleaned_json}")
+            
+            try:
+                analysisJson = json.loads(cleaned_json)
+                return analysisJson
+            except json.JSONDecodeError as e:
+                logging.error(f"Failed to parse AI analysis: {str(e)}")
+                return {
+                    "brand": "Unknown",
+                    "category": "Unknown",
+                    "condition": 0,
+                    "seo_keywords": []
+                }
             
     except Exception as e:
         logging.error(f"Error processing files: {str(e)}")
-        return {"message": f"Error processing files: {str(e)}", "error": True}
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")
 async def upload_file(files: List[UploadFile] = File(...)):

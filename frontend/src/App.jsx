@@ -192,10 +192,40 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleFileSelect = (event) => {
-    const files = Array.from(event.target.files);
-    setSelectedFiles(files);
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setLoading(true);
     setError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      console.log('Sending request to backend...');
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(`HTTP error! status: ${response.status}${errorData ? ` - ${JSON.stringify(errorData)}` : ''}`);
+      }
+
+      const result = await response.json();
+      console.log("Analysis result:", result);
+      setAnalysisResult(result);
+    } catch (error) {
+      console.error("Error analyzing images:", error);
+      setError(`Error analyzing images: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDrop = (event) => {
@@ -289,7 +319,7 @@ const App = () => {
               type="file"
               multiple
               accept="image/*"
-              onChange={handleFileSelect}
+              onChange={handleImageUpload}
               style={{ display: 'none' }}
               ref={fileInputRef}
             />
