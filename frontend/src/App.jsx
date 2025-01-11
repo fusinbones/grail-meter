@@ -86,6 +86,11 @@ const App = () => {
       const response = await fetch(`${API_URL}/analyze`, {
         method: 'POST',
         body: formData,
+        credentials: 'same-origin',  // Include cookies if needed
+        headers: {
+          'Accept': 'application/json',
+        },
+        mode: 'cors',  // Enable CORS
       });
 
       const result = await response.json();

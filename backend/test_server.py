@@ -183,19 +183,9 @@ def get_gemini_fallback_data(search_term):
     }
 
 def get_trend_data(search_term):
-    """Get trend data using PyTrends."""
+    """Get trend data using PyTrends with improved production configuration."""
     try:
         logging.info(f"[PyTrends] Starting trend data fetch for: {search_term}")
-        
-        # Initialize PyTrends with robust settings
-        pytrends = TrendReq(
-            hl='en-US',
-            tz=360,  # Central Time (US & Canada)
-            timeout=(10,10),  # Connection timeout, Read timeout
-            retries=2,
-            backoff_factor=0.5,
-            requests_args={'verify': True}
-        )
         
         # Clean search term and prepare fallback terms
         search_term = search_term.strip()
@@ -223,11 +213,39 @@ def get_trend_data(search_term):
             terms.append('streetwear fashion')
             
         logging.info(f"[PyTrends] Search terms from specific to broad: {terms}")
+
+        # Custom headers to make requests look more like a browser
+        custom_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Referer': 'https://trends.google.com/',
+            'DNT': '1',
+        }
+        
+        # Initialize PyTrends with more browser-like settings
+        pytrends = TrendReq(
+            hl='en-US',
+            tz=360,
+            timeout=(30,30),  # Increased timeout
+            retries=3,
+            backoff_factor=1.5,
+            requests_args={
+                'verify': True,
+                'headers': custom_headers,
+                'allow_redirects': True
+            }
+        )
         
         # Try each term until we get data
         for term in terms:
             try:
                 logging.info(f"[PyTrends] Trying search term: {term}")
+                
+                # Add a small delay between requests to avoid rate limiting
+                import time
+                time.sleep(1.5)
+                
                 pytrends.build_payload(
                     kw_list=[term],
                     cat=0,
@@ -246,7 +264,10 @@ def get_trend_data(search_term):
                     } for date, row in interest_df.iterrows() 
                     if term in row and pd.notna(row[term])]
                     
-                    # Get related queries for this successful term
+                    # Add delay before getting related queries
+                    time.sleep(1.5)
+                    
+                    # Get related queries
                     related = pytrends.related_queries()
                     keywords_data = []
                     if related and term in related:
