@@ -265,17 +265,18 @@ const App = () => {
         throw new Error('Invalid response format');
       }
       
-      // Transform keywords if needed
-      if (result.keywords && Array.isArray(result.keywords)) {
-        result.seo_keywords = result.keywords.map(keyword => {
-          if (typeof keyword === 'string') {
-            return { keyword, volume: 0 };
-          }
-          return keyword;
-        });
-      }
+      // Transform the data structure if needed
+      const transformedResult = {
+        ...result,
+        trend_data: Array.isArray(result.trend_data) ? result.trend_data : [],
+        seo_keywords: Array.isArray(result.keywords) ? result.keywords.map(kw => ({
+          keyword: typeof kw === 'object' ? kw.keyword : kw,
+          volume: typeof kw === 'object' ? kw.volume : 0
+        })) : []
+      };
       
-      setAnalysisResult(result);
+      console.log('Transformed result:', transformedResult);
+      setAnalysisResult(transformedResult);
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err.message || 'An error occurred during analysis');
@@ -646,7 +647,7 @@ const App = () => {
                   borderColor: 'divider',
                   overflow: 'hidden'
                 }}>
-                  <TrendGraph trendData={analysisResult.trend_data} />
+                  <TrendGraph trendData={analysisResult?.trend_data || []} />
                 </Box>
               </Grid>
 
@@ -668,17 +669,13 @@ const App = () => {
                     </Typography>
                   </Box>
                   
-                  {analysisResult.seo_keywords && analysisResult.seo_keywords.length > 0 ? (
+                  {analysisResult?.seo_keywords?.length > 0 ? (
                     <List sx={{ 
                       flex: 1,
                       overflow: 'auto',
                       py: 0
                     }}>
                       {analysisResult.seo_keywords
-                        .map(keyword => ({
-                          keyword: typeof keyword === 'object' ? keyword.keyword : keyword,
-                          volume: typeof keyword === 'object' ? keyword.volume || 0 : 0
-                        }))
                         .sort((a, b) => b.volume - a.volume)
                         .map((item, index) => (
                           <ListItem
@@ -725,7 +722,7 @@ const App = () => {
                               }}>
                                 <Box
                                   sx={{
-                                    width: `${(item.volume / Math.max(...analysisResult.seo_keywords.map(k => typeof k === 'object' ? k.volume || 0 : 0))) * 100}%`,
+                                    width: `${(item.volume / Math.max(...analysisResult.seo_keywords.map(k => k.volume || 0))) * 100}%`,
                                     height: '100%',
                                     bgcolor: 'primary.main',
                                     transition: 'width 0.5s ease-in-out'

@@ -169,15 +169,21 @@ def get_trend_data(search_term):
 
         logging.info(f"Initializing PyTrends for search term: {search_term}")
         
-        # Initialize PyTrends
+        # Initialize PyTrends with proper configuration
         pytrends = TrendReq(hl='en-US', tz=360, timeout=(10,25), retries=2, backoff_factor=0.1)
         
-        # Build the payload
+        # Build the payload with proper parameters
         kw_list = [search_term]
         timeframe = 'today 12-m'  # Last 12 months
         
         logging.info(f"Building payload for PyTrends with search term: {search_term}")
-        pytrends.build_payload(kw_list, cat=0, timeframe=timeframe, geo='', gprop='')
+        pytrends.build_payload(
+            kw_list=kw_list,
+            cat=0,  # All categories
+            timeframe=timeframe,
+            geo='',  # Worldwide
+            gprop=''  # Web search
+        )
         
         # Get interest over time
         logging.info("Fetching interest over time data")
@@ -194,16 +200,7 @@ def get_trend_data(search_term):
         logging.info("Fetching related queries data")
         related_queries = pytrends.related_queries()
         
-        if not related_queries or search_term not in related_queries:
-            logging.warning(f"No related queries found for {search_term}")
-            return {
-                'trend_data': list(interest_over_time_df[search_term].items()),
-                'keywords_data': []
-            }
-            
-        top_queries = related_queries[search_term]['top']
-        
-        # Transform the data
+        # Transform the trend data
         trend_data = []
         for date, row in interest_over_time_df.iterrows():
             trend_data.append({
@@ -213,12 +210,14 @@ def get_trend_data(search_term):
             
         # Get related keywords with their volumes
         keywords_data = []
-        if top_queries is not None and not top_queries.empty:
-            for _, row in top_queries.iterrows():
-                keywords_data.append({
-                    'keyword': row['query'],
-                    'volume': int(row['value'])
-                })
+        if related_queries and search_term in related_queries:
+            top_queries = related_queries[search_term]['top']
+            if isinstance(top_queries, pd.DataFrame) and not top_queries.empty:
+                for _, row in top_queries.iterrows():
+                    keywords_data.append({
+                        'keyword': str(row['query']),
+                        'volume': int(row['value'])
+                    })
                 
         logging.info(f"Successfully retrieved trend data with {len(trend_data)} points and {len(keywords_data)} keywords")
         return {
@@ -284,14 +283,14 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                         raise HTTPException(status_code=500, detail="Failed to parse analysis results")
                     
                     # Get real trend data
-                    trend_data = {
-                        'trend_data': [],
-                        'keywords_data': []
-                    }
-                    
                     if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
                         search_term = f"{analysis_json['brand']} {analysis_json['category']}"
                         logging.info(f"Getting trend data for search term: {search_term}")
+                        
+                        # Clean brand name for better search results
+                        search_term = search_term.replace('A|X ', '').replace('A/X ', '')
+                        search_term = search_term.strip()
+                        
                         trend_data = get_trend_data(search_term)
                         
                         if trend_data['keywords_data']:
@@ -299,11 +298,16 @@ async def analyze_image_route(files: List[UploadFile] = File(...)):
                             logging.info(f"Updated SEO keywords with {len(trend_data['keywords_data'])} items")
                     else:
                         logging.warning("Brand or category is Unknown, skipping trend data")
+                        trend_data = {
+                            'trend_data': [],
+                            'keywords_data': []
+                        }
                     
                     # Create the response
                     response = {
                         **analysis_json,  # Include all fields from analysis
-                        "trend_data": trend_data.get('trend_data', [])
+                        "trend_data": trend_data['trend_data'],
+                        "keywords": trend_data['keywords_data']
                     }
                     
                     logging.info("Successfully created response with trend data and analysis")
