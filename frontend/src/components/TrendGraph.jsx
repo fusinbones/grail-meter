@@ -8,9 +8,35 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Box } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 
 const TrendGraph = ({ title, trendData }) => {
+  if (!trendData || !Array.isArray(trendData) || trendData.length === 0) {
+    return (
+      <Box sx={{ 
+        width: '100%', 
+        height: '100%',
+        minHeight: '350px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <Typography variant="body1" color="textSecondary">
+          No trend data available
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Format dates for better display
+  const formattedData = trendData.map(point => ({
+    date: new Date(point.date).toLocaleDateString('en-US', { 
+      month: 'short',
+      year: 'numeric'
+    }),
+    volume: point.volume
+  }));
+
   return (
     <Box sx={{ 
       width: '100%', 
@@ -20,9 +46,12 @@ const TrendGraph = ({ title, trendData }) => {
       px: 2,
       pb: 4
     }}>
+      <Typography variant="h6" sx={{ mb: 2, textAlign: 'center' }}>
+        {title || 'Search Interest Over Time'}
+      </Typography>
       <ResponsiveContainer>
         <LineChart
-          data={trendData}
+          data={formattedData}
           margin={{
             top: 20,
             right: 25,
@@ -32,41 +61,21 @@ const TrendGraph = ({ title, trendData }) => {
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
-            dataKey="month" 
+            dataKey="date" 
             tick={{ fontSize: 12 }}
             tickMargin={15}
             height={60}
-            interval={0}
+            interval="preserveStartEnd"
           />
           <YAxis 
             tick={{ fontSize: 12 }}
             domain={[0, 100]}
-            tickFormatter={(value) => `${value}%`}
+            tickFormatter={(value) => `${value}`}
             width={55}
             tickMargin={10}
           />
           <Tooltip 
-            formatter={(value) => [`${value}%`, 'Interest']}
-            labelFormatter={(label) => `Month: ${label}`}
-          />
-          <Line
-            type="monotone"
-            dataKey="interest"
-            stroke="#2196f3"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 6 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </Box>
-  );
-};
-
-export default TrendGraph;
-          <Tooltip 
-            formatter={(value) => [value, 'Interest']}
-            labelFormatter={(label) => `${label}`}
+            formatter={(value) => [`${value}`, 'Search Interest']}
             contentStyle={{
               backgroundColor: '#fff',
               border: '1px solid #e0e0e0',
@@ -76,7 +85,7 @@ export default TrendGraph;
           />
           <Line
             type="monotone"
-            dataKey="value"
+            dataKey="volume"
             stroke="#2196f3"
             strokeWidth={2}
             dot={false}
