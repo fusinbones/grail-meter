@@ -19,6 +19,7 @@ import pandas as pd
 import base64
 import signal
 import sys
+import re
 
 # Configure logging
 logging.basicConfig(filename='server.log', level=logging.INFO,
@@ -115,12 +116,12 @@ def test_endpoint():
     return {"message": "Test endpoint is working"}
 
 @app.post("/analyze")
-async def analyze_image_route(file: UploadFile = File(...)):
+async def analyze_image_route(file: UploadFile = File(description="Image file to analyze")):
     """
     Analyze an uploaded image using Google's Gemini Vision model.
     """
     try:
-        logging.info(f"Received file: {file.filename}")
+        logging.info(f"Received file: {file.filename}, content_type: {file.content_type}")
         
         # Validate file type
         if not file.content_type.startswith('image/'):
@@ -128,29 +129,36 @@ async def analyze_image_route(file: UploadFile = File(...)):
         
         # Create a temporary file to store the uploaded image
         with NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_file.flush()
-            
-            # Get AI analysis for this image
-            result = analyze_with_gemini(temp_file.name)
-            logging.info(f"Raw AI analysis: {result}")
-            
-            # Clean the JSON string
-            cleaned_json = clean_json_string(result)
-            logging.info(f"Cleaned analysis: {cleaned_json}")
-            
             try:
-                analysisJson = json.loads(cleaned_json)
-                return analysisJson
-            except json.JSONDecodeError as e:
-                logging.error(f"Failed to parse AI analysis: {str(e)}")
-                return {
-                    "brand": "Unknown",
-                    "category": "Unknown",
-                    "condition": 0,
-                    "seo_keywords": []
-                }
+                content = await file.read()
+                if not content:
+                    raise HTTPException(status_code=400, detail="Empty file received")
+                
+                temp_file.write(content)
+                temp_file.flush()
+                
+                # Get AI analysis for this image
+                result = analyze_with_gemini(temp_file.name)
+                logging.info(f"Raw AI analysis: {result}")
+                
+                # Clean the JSON string
+                cleaned_json = clean_json_string(result)
+                logging.info(f"Cleaned analysis: {cleaned_json}")
+                
+                try:
+                    analysisJson = json.loads(cleaned_json)
+                    return analysisJson
+                except json.JSONDecodeError as e:
+                    logging.error(f"Failed to parse AI analysis: {str(e)}")
+                    return {
+                        "brand": "Unknown",
+                        "category": "Unknown",
+                        "condition": 0,
+                        "seo_keywords": []
+                    }
+            finally:
+                # Clean up the temporary file
+                os.unlink(temp_file.name)
             
     except Exception as e:
         logging.error(f"Error processing files: {str(e)}")

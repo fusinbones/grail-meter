@@ -200,13 +200,15 @@ const App = () => {
     setError(null);
 
     const formData = new FormData();
-    formData.append('file', file);
+    // The key must match the parameter name in the FastAPI route
+    formData.append('file', file, file.name);
 
     try {
       console.log('Sending request to backend...');
       const response = await fetch(`${import.meta.env.VITE_API_URL}/analyze`, {
         method: 'POST',
         body: formData,
+        // Don't set Content-Type header, let the browser set it with the boundary
         headers: {
           'Accept': 'application/json',
         },
