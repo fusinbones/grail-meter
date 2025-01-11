@@ -598,63 +598,80 @@ const App = () => {
                         </Typography>
                       </Box>
                     ))}
-                    
-                  {/* SEO Keywords */}
-                  {analysisResult.seo_keywords && analysisResult.seo_keywords.length > 0 && (
-                    <Box>
-                      <Typography 
-                        variant="subtitle1" 
-                        color="text.secondary"
-                        sx={{ mb: 1, textTransform: 'capitalize' }}
-                      >
-                        SEO Keywords
-                      </Typography>
-                      <List dense sx={{ bgcolor: 'background.paper' }}>
-                        {analysisResult.seo_keywords.map((keyword, index) => (
-                          <ListItem key={index}>
-                            <ListItemText
-                              primary={typeof keyword === 'object' ? keyword.keyword : keyword}
-                              secondary={typeof keyword === 'object' ? `Volume: ${keyword.volume}` : null}
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    </Box>
-                  )}
                 </Box>
               </Grid>
             </Grid>
           </Paper>
 
-          {/* Trend Graph */}
-          {analysisResult.trend_data && analysisResult.trend_data.length > 0 && (
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                mt: 4,
-                p: 4,
-                borderRadius: 3,
-                backgroundColor: '#ffffff',
-                border: '1px solid',
-                borderColor: 'divider'
-              }}
-            >
-              <Typography 
-                variant="h5" 
-                gutterBottom 
-                sx={{ 
-                  mb: 3,
-                  fontWeight: 'medium'
-                }}
-              >
-                Market Trend Analysis
-              </Typography>
-              <TrendGraph 
-                title={`${analysisResult.brand} ${analysisResult.category} Trend`}
-                trendData={analysisResult.trend_data}
-              />
-            </Paper>
-          )}
+          {/* Trend Graph and SEO Keywords */}
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              mt: 4,
+              p: 4,
+              borderRadius: 3,
+              backgroundColor: '#ffffff',
+              border: '1px solid',
+              borderColor: 'divider'
+            }}
+          >
+            <Grid container spacing={4}>
+              {/* Trend Graph */}
+              <Grid item xs={12} md={8}>
+                <Typography variant="h6" gutterBottom>
+                  Market Trend Analysis
+                </Typography>
+                <Box sx={{ height: 400 }}>
+                  <TrendGraph trendData={analysisResult.trend_data} />
+                </Box>
+              </Grid>
+
+              {/* SEO Keywords */}
+              <Grid item xs={12} md={4}>
+                <Typography variant="h6" gutterBottom>
+                  Search Volume Analysis
+                </Typography>
+                {analysisResult.seo_keywords && analysisResult.seo_keywords.length > 0 ? (
+                  <List 
+                    sx={{ 
+                      bgcolor: 'background.paper',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider'
+                    }}
+                  >
+                    {[...analysisResult.seo_keywords]
+                      .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+                      .map((keyword, index) => (
+                        <ListItem 
+                          key={index}
+                          divider={index < analysisResult.seo_keywords.length - 1}
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            gap: 0.5
+                          }}
+                        >
+                          <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
+                            {typeof keyword === 'object' ? keyword.keyword : keyword}
+                          </Typography>
+                          {typeof keyword === 'object' && keyword.volume && (
+                            <Typography variant="body2" color="text.secondary">
+                              Search Volume: {keyword.volume.toLocaleString()}
+                            </Typography>
+                          )}
+                        </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography color="text.secondary">
+                    No keyword data available
+                  </Typography>
+                )}
+              </Grid>
+            </Grid>
+          </Paper>
         </Box>
       )}
     </Container>
