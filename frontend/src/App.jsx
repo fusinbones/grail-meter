@@ -6,50 +6,50 @@ import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import './App.css';
 
-const StyledPaper = styled(Paper)(({ theme }) => ({
-  backgroundColor: 'transparent',
-  boxShadow: 'none',
-  height: '100%',
-  '& .glass-card': {
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column'
+const StyledPaper = styled(Paper)(({ theme }) => `
+  background-color: transparent;
+  box-shadow: none;
+  height: 100%;
+  & .glass-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
-}));
+`);
 
-const ImageContainer = styled(Box)({
-  width: '100%',
-  height: '400px',
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  overflow: 'hidden',
-  borderRadius: '16px',
-  background: 'rgba(0, 0, 0, 0.2)',
-  backdropFilter: 'blur(8px)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  '& img': {
-    maxWidth: '100%',
-    maxHeight: '100%',
-    objectFit: 'contain',
-    borderRadius: '12px'
-  },
-  '@media (max-width: 600px)': {
-    height: '300px'
+const ImageContainer = styled(Box)(({ theme }) => `
+  width: 100%;
+  height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  & img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 12px;
   }
-}));
+  @media (max-width: 600px) {
+    height: 300px;
+  }
+`);
 
-const KeywordChip = styled(Chip)(({ theme }) => ({
-  margin: theme.spacing(0.5),
-  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  color: 'rgba(255, 255, 255, 0.87)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
-  '&:hover': {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    transform: 'translateY(-2px)'
-  },
-  transition: 'all 0.3s ease'
-}));
+const KeywordChip = styled(Chip)(({ theme }) => `
+  margin: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.87);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+  }
+  transition: all 0.3s ease;
+`);
 
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
