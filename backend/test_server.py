@@ -371,15 +371,15 @@ def get_top_keywords(keywords: List[str], count: int) -> List[str]:
 class ProxyManager:
     def __init__(self):
         self.base_url = "usa.rotating.proxyrack.net"
-        self.auth = "mcherchSUH5TDY-APM77K0-K703SNY-JIMAOKI-YIEAGRU-LVFTB2M-ZJOG99K"
+        self.auth = "SU-H5TDY-APM77K0-K703SNY-JIMAOKI-YIEAGRU-LVFTB2M-ZJOG99K"
+        self.username = "mcherch"
         self.ports = list(range(10000, 10250))  # Ports from 10000 to 10249
         
     def get_proxy(self):
         port = random.choice(self.ports)
-        proxy_url = f"{self.base_url}:{port}{self.auth}"
         return {
-            'http': f'http://{proxy_url}',
-            'https': f'http://{proxy_url}'
+            'http': f'http://{self.username}:{self.auth}@{self.base_url}:{port}',
+            'https': f'http://{self.username}:{self.auth}@{self.base_url}:{port}'
         }
 
 def search_ebay_listings(query):
@@ -400,7 +400,9 @@ def search_ebay_listings(query):
             try:
                 proxies = proxy_manager.get_proxy()
                 log_info(f"Searching eBay with URL: {search_url} (Attempt {attempt + 1})")
-                response = requests.get(search_url, headers=headers, proxies=proxies, timeout=10)
+                log_info(f"Using proxy: {proxies}")
+                
+                response = requests.get(search_url, headers=headers, proxies=proxies, timeout=30)
                 response.raise_for_status()
                 
                 soup = BeautifulSoup(response.text, 'lxml')
@@ -436,7 +438,7 @@ def search_ebay_listings(query):
                             continue
                             
                         # Verify the listing exists
-                        listing_response = requests.get(url, headers=headers, proxies=proxies, timeout=10)
+                        listing_response = requests.get(url, headers=headers, proxies=proxies, timeout=30)
                         if listing_response.status_code != 200 or "This listing was ended by the seller because the item is no longer available." in listing_response.text:
                             continue
                             
