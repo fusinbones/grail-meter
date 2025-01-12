@@ -370,17 +370,30 @@ def get_top_keywords(keywords: List[str], count: int) -> List[str]:
 
 class ProxyManager:
     def __init__(self):
+        # Rotating proxies
         self.base_url = "usa.rotating.proxyrack.net"
         self.auth = "SU-H5TDY-APM77K0-K703SNY-JIMAOKI-YIEAGRU-LVFTB2M-ZJOG99K"
         self.username = "mcherch"
-        self.ports = list(range(10000, 10250))  # Ports from 10000 to 10249
+        self.ports = list(range(10000, 10250))
         
-    def get_proxy(self):
+        # Premium residential proxy
+        self.premium_dns = "premium.residential.proxyrack.net:9000"
+        
+    def get_rotating_proxy(self):
         port = random.choice(self.ports)
         return {
             'http': f'http://{self.username}:{self.auth}@{self.base_url}:{port}',
             'https': f'http://{self.username}:{self.auth}@{self.base_url}:{port}'
         }
+        
+    def get_premium_proxy(self):
+        return {
+            'http': f'http://{self.username}:{self.auth}@{self.premium_dns}',
+            'https': f'http://{self.username}:{self.auth}@{self.premium_dns}'
+        }
+        
+    def get_proxy(self, use_premium=False):
+        return self.get_premium_proxy() if use_premium else self.get_rotating_proxy()
 
 def search_ebay_listings(query):
     try:
@@ -396,11 +409,17 @@ def search_ebay_listings(query):
         search_url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sacat=0&LH_BIN=1&rt=nc&LH_ItemCondition=1000|1500|2000|2500|3000"
         
         max_retries = 3
+        use_premium = False  # Start with rotating proxies
+        
         for attempt in range(max_retries):
             try:
-                proxies = proxy_manager.get_proxy()
-                log_info(f"Searching eBay with URL: {search_url} (Attempt {attempt + 1})")
-                log_info(f"Using proxy: {proxies}")
+                # Switch to premium proxy after first failure
+                if attempt > 0:
+                    use_premium = True
+                    
+                proxies = proxy_manager.get_proxy(use_premium)
+                proxy_type = "premium residential" if use_premium else "rotating"
+                log_info(f"Searching eBay with URL: {search_url} (Attempt {attempt + 1}, using {proxy_type} proxy)")
                 
                 response = requests.get(search_url, headers=headers, proxies=proxies, timeout=30)
                 response.raise_for_status()
@@ -464,7 +483,7 @@ def search_ebay_listings(query):
                     }
                     
             except Exception as e:
-                log_error(f"Error in attempt {attempt + 1}: {str(e)}")
+                log_error(f"Error in attempt {attempt + 1} with {proxy_type} proxy: {str(e)}")
                 if attempt == max_retries - 1:
                     raise
                 continue
