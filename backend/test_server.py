@@ -8,9 +8,6 @@ import tempfile
 from PIL import Image
 import io
 import google.generativeai as genai
-from pytrends.request import TrendReq
-import pandas as pd
-from typing import Dict, List, Optional, Any
 import json
 import requests
 from datetime import datetime, timedelta
@@ -186,282 +183,101 @@ def analyze_with_gemini(image_path: str) -> str:
             "seo_keywords": []
         }
 
-def get_gemini_fallback_data(search_term):
-    """Get suggested keywords from Gemini when PyTrends fails."""
-    try:
-        model = genai.GenerativeModel('gemini-1.5-pro')
-        prompt = f"""Generate 5 relevant search keywords for '{search_term}' in the fashion/clothing context.
-        Return as JSON array of objects with 'keyword' and estimated 'volume' (1-100).
-        Example: [{{"keyword": "example term", "volume": 80}}]"""
-        
-        response = model.generate_content(prompt)
-        if response and response.text:
-            try:
-                keywords = json.loads(response.text)
-                if isinstance(keywords, list):
-                    return {
-                        'trend_data': [],
-                        'keywords_data': keywords
-                    }
-            except json.JSONDecodeError:
-                pass
-                
-    except Exception as e:
-        log_error(f"Gemini fallback error: {str(e)}")
-    
-    return {
-        'trend_data': [],
-        'keywords_data': []
-    }
-
-def get_free_proxies():
-    """Get a list of free proxies from free-proxy-list.net."""
-    try:
-        url = "https://free-proxy-list.net/"
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        proxies = []
-        # Find the table with proxies
-        proxy_table = soup.find('table')
-        if proxy_table:
-            for row in proxy_table.find_all('tr')[1:]:  # Skip header row
-                columns = row.find_all('td')
-                if len(columns) >= 7:  # Ensure row has enough columns
-                    ip = columns[0].text.strip()
-                    port = columns[1].text.strip()
-                    https = columns[6].text.strip()
-                    country = columns[3].text.strip()
-                    
-                    # Only use HTTPS proxies from reliable countries
-                    reliable_countries = {'US', 'CA', 'GB', 'DE', 'FR', 'NL', 'JP', 'KR', 'SG'}
-                    if https == 'yes' and country in reliable_countries:
-                        proxy = f'http://{ip}:{port}'
-                        proxies.append(proxy)
-                        
-        log_info(f"[Proxy] Found {len(proxies)} potential proxies")
-        return proxies
-    except Exception as e:
-        log_error(f"[Proxy] Error fetching proxy list: {str(e)}")
-        return []
-
-async def get_proxy_list():
-    """Get a list of proxies."""
-    return get_free_proxies()
-
-async def get_trend_data(search_term: str) -> List[Dict[str, Any]]:
-    try:
-        log_info(f"[PyTrends] Starting trend data fetch for: {search_term}")
-        
-        # Use proxyrack proxy
-        proxy_config = {
-            'http': 'http://customer-grailmeter-cc-us:0d06c2-5f3d7d-13a1bc-ea4aaf-c2f857@pr.oxylabs.io:7777',
-            'https': 'http://customer-grailmeter-cc-us:0d06c2-5f3d7d-13a1bc-ea4aaf-c2f857@pr.oxylabs.io:7777'
-        }
-        
-        # Initialize pytrends with proxy as per readme
-        pytrends = TrendReq(
-            hl='en-US',
-            tz=360,
-            timeout=(10,25),
-            proxies=proxy_config,
-            retries=2,
-            backoff_factor=0.1
-        )
-        
-        # Clean search term
-        clean_term = search_term.lower().strip()
-        log_info(f"[PyTrends] Using search term: {clean_term}")
-        
-        # Add delay before request as per readme
-        await asyncio.sleep(1)
-        
-        # Build payload exactly as shown in readme
-        pytrends.build_payload(
-            kw_list=[clean_term],  # Single keyword as recommended
-            cat=0,
-            timeframe='today 3-m',
-            geo='',
-            gprop=''
-        )
-        
-        # Add delay between requests as per readme
-        await asyncio.sleep(1)
-        
-        # Get interest over time data
-        interest_df = pytrends.interest_over_time()
-        
-        if not interest_df.empty:
-            log_info("[PyTrends] Got interest over time data")
-            result = []
-            for date, row in interest_df.iterrows():
-                volume = int(row[clean_term])
-                result.append({
-                    'date': date.strftime('%Y-%m-%d'),
-                    'volume': volume
-                })
-            
-            if any(item['volume'] > 0 for item in result):
-                log_info("[PyTrends] Found non-zero trend data")
-                return result
-            
-            # If all volumes are zero, try related queries
-            await asyncio.sleep(1)  # Delay before new request
-            
-            related_queries = pytrends.related_queries()
-            if related_queries and clean_term in related_queries:
-                top_df = related_queries[clean_term].get('top')
-                if isinstance(top_df, pd.DataFrame) and not top_df.empty:
-                    current_date = datetime.now()
-                    result = []
-                    for _, row in top_df.iterrows():
-                        if row['value'] > 0:
-                            result.append({
-                                'date': current_date.strftime('%Y-%m-%d'),
-                                'volume': int(row['value'])
-                            })
-                    if result:
-                        log_info("[PyTrends] Using related query volumes")
-                        return result
-        
-        log_info("[PyTrends] No trend data found, using default data")
-        current_date = datetime.now()
-        return [
-            {
-                'date': (current_date - timedelta(days=i*7)).strftime('%Y-%m-%d'),
-                'volume': 50
-            }
-            for i in range(8)
-        ]
-        
-    except Exception as e:
-        log_error("[PyTrends] Error fetching trend data", e)
-        current_date = datetime.now()
-        return [
-            {
-                'date': (current_date - timedelta(days=i*7)).strftime('%Y-%m-%d'),
-                'volume': 50
-            }
-            for i in range(8)
-        ]
-
-@app.post("/analyze")
 async def analyze_image(file: UploadFile):
+    """Analyze an uploaded image using Google's Gemini Vision API."""
     try:
         log_info("Starting image analysis")
         
-        # Validate file
-        if not file:
-            raise HTTPException(status_code=400, detail="No file provided")
+        # Process the uploaded file
+        file_content = await process_uploaded_file(file)
+        if not file_content:
+            raise HTTPException(status_code=400, detail="Failed to process uploaded file")
             
-        if not file.filename:
-            raise HTTPException(status_code=400, detail="No filename provided")
+        # Get Gemini analysis
+        gemini_result = await analyze_with_gemini(file_content)
+        if not gemini_result:
+            raise HTTPException(status_code=500, detail="Failed to analyze image with Gemini")
             
-        # Log request details
-        log_info(f"Processing file: {file.filename}")
-        
-        # Validate file type
-        if not file.content_type or not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image file.")
-        
-        # Read and validate file content
+        # Parse and structure the Gemini result
         try:
-            contents = await file.read()
-            if not contents:
-                raise HTTPException(status_code=400, detail="Empty file received")
-            log_info(f"File size: {len(contents)} bytes")
-        except Exception as e:
-            log_error("Error reading file", e)
-            raise HTTPException(status_code=400, detail=str(e))
+            result = {
+                'product': {
+                    'brand': gemini_result.get('brand', 'Unknown Brand'),
+                    'category': gemini_result.get('category', 'Unknown Category'),
+                    'condition': gemini_result.get('condition', 5),
+                    'title': f"{gemini_result.get('brand', '')} {gemini_result.get('category', '')}".strip(),
+                    'description': generate_product_description(gemini_result),
+                },
+                'seo': {
+                    'primary_keywords': get_top_keywords(gemini_result.get('seo_keywords', []), 5),
+                    'all_keywords': gemini_result.get('seo_keywords', [])
+                }
+            }
             
-        # Process file and get results
-        try:
-            result = await process_image(contents, file.filename)
-            if not result:
-                raise HTTPException(status_code=500, detail="Failed to process image")
-            return JSONResponse(
-                status_code=200,
-                content=result
-            )
-        except Exception as e:
-            log_error("Error processing image", e)
-            raise HTTPException(status_code=500, detail=str(e))
+            log_info(f"Analysis complete: {result}")
+            return result
             
-    except HTTPException as he:
-        log_error(f"HTTP Exception: {he.detail}")
-        return JSONResponse(
-            status_code=he.status_code,
-            content={"detail": he.detail}
-        )
+        except Exception as e:
+            log_error("Error parsing Gemini result", e)
+            raise HTTPException(status_code=500, detail="Failed to parse analysis results")
+            
     except Exception as e:
-        log_error("Unexpected error", e)
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e)}
-        )
-
-async def process_image(contents, filename):
-    # Save the uploaded file temporarily
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-        try:
-            temp_file.write(contents)
-            temp_file.flush()
-            log_info(f"Saved to temp file: {temp_file.name}")
-
-            # Process the image
+        log_error("Error in image analysis", e)
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Clean up any temporary files
+        if 'temp_file_path' in locals():
             try:
-                with Image.open(temp_file.name) as img:
-                    img_bytes = io.BytesIO()
-                    img.save(img_bytes, format='JPEG')
-                    img_bytes = img_bytes.getvalue()
-                    log_info(f"Image processed, size: {len(img_bytes)} bytes")
-
-                # Get Gemini analysis
-                try:
-                    log_info("Starting Gemini analysis")
-                    result = analyze_with_gemini(temp_file.name)
-                    if not result:
-                        raise ValueError("Empty result from Gemini")
-                    log_info(f"Gemini analysis result: {result}")
-
-                    # Extract brand and category
-                    brand = result.get('brand', 'Unknown')
-                    category = result.get('category', 'Unknown')
-                    search_term = f"{brand} {category}".strip()
-                    log_info(f"Search term: {search_term}")
-
-                    # Get trend data
-                    try:
-                        log_info("Starting trend estimation")
-                        trend_result = await get_trend_data(search_term)
-                        log_info(f"Trend estimation result: {trend_result}")
-
-                        # Combine results
-                        result.update(trend_result)
-                        return result
-                    except Exception as e:
-                        log_error("Error getting trend data", e)
-                        raise
-
-                except Exception as e:
-                    log_error("Error in Gemini analysis", e)
-                    raise
-
+                os.remove(temp_file_path)
+                log_info(f"Cleaned up temp file: {temp_file_path}")
             except Exception as e:
-                log_error("Error processing image", e)
-                raise
+                log_error(f"Error cleaning up temp file: {temp_file_path}", e)
 
-        except Exception as e:
-            log_error("Error handling temp file", e)
-            raise
+def generate_product_description(result: Dict) -> str:
+    """Generate a detailed product description from Gemini analysis."""
+    brand = result.get('brand', '')
+    category = result.get('category', '')
+    condition_score = result.get('condition', 5)
+    
+    # Convert condition score to descriptive text
+    condition_text = "Brand New" if condition_score >= 9 else \
+                    "Excellent" if condition_score >= 8 else \
+                    "Very Good" if condition_score >= 7 else \
+                    "Good" if condition_score >= 6 else \
+                    "Fair" if condition_score >= 5 else "Used"
+    
+    description = f"Authentic {brand} {category} in {condition_text} condition. "
+    
+    # Add style details from keywords if available
+    keywords = result.get('seo_keywords', [])
+    style_keywords = [k for k in keywords if any(style in k.lower() for style in ['style', 'design', 'fit'])]
+    if style_keywords:
+        description += f"Features include: {', '.join(style_keywords[:3])}. "
+    
+    return description.strip()
 
-        finally:
-            # Clean up temp file
-            try:
-                os.unlink(temp_file.name)
-                log_info(f"Cleaned up temp file: {temp_file.name}")
-            except Exception as e:
-                log_error("Error deleting temp file", e)
+def get_top_keywords(keywords: List[str], count: int) -> List[str]:
+    """Get the top N keywords, prioritizing brand and product type."""
+    if not keywords:
+        return []
+        
+    # Prioritize keywords that are likely to have high search volume
+    def keyword_priority(keyword: str) -> int:
+        lower_keyword = keyword.lower()
+        if 'brand' in lower_keyword or 'designer' in lower_keyword:
+            return 3
+        if any(category in lower_keyword for category in ['hoodie', 'jacket', 'shirt', 'pants']):
+            return 2
+        if any(modifier in lower_keyword for modifier in ['style', 'fashion', 'trending']):
+            return 1
+        return 0
+    
+    sorted_keywords = sorted(keywords, key=keyword_priority, reverse=True)
+    return sorted_keywords[:count]
+
+@app.post("/analyze")
+async def analyze_image_endpoint(file: UploadFile):
+    return await analyze_image(file)
 
 @app.get("/")
 async def read_root():

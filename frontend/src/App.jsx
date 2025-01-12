@@ -31,6 +31,42 @@ const GlassPaper = styled(Paper)(({ theme }) => ({
   marginBottom: theme.spacing(2)
 }));
 
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  height: '100%',
+  backgroundColor: '#ffffff',
+  borderRadius: '12px',
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+  transition: 'transform 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+  },
+}));
+
+const ImageContainer = styled(Box)({
+  width: '100%',
+  height: '400px',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  overflow: 'hidden',
+  borderRadius: '8px',
+  backgroundColor: '#f5f5f5',
+  '& img': {
+    maxWidth: '100%',
+    maxHeight: '100%',
+    objectFit: 'contain',
+  },
+});
+
+const KeywordChip = styled(Chip)(({ theme }) => ({
+  margin: theme.spacing(0.5),
+  backgroundColor: '#e3f2fd',
+  '&:hover': {
+    backgroundColor: '#bbdefb',
+  },
+}));
+
 const App = () => {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
@@ -344,81 +380,42 @@ const App = () => {
           </Typography>
           
           {/* Image Preview and Item Details */}
-          <Paper 
-            elevation={0} 
-            sx={{ 
-              p: 4,
-              borderRadius: 3,
-              bgcolor: 'background.default',
-              border: '1px solid',
-              borderColor: 'divider'
-            }}
-          >
-            <Grid container spacing={4}>
-              {/* Image Preview */}
-              <Grid item xs={12} md={6}>
-                <Box
-                  sx={{
-                    width: '100%',
-                    height: { xs: 300, md: 400 },
-                    borderRadius: 3,
-                    overflow: 'hidden',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    bgcolor: 'background.paper',
-                    border: '1px solid',
-                    borderColor: 'divider'
-                  }}
-                >
-                  {selectedFiles[0] && (
-                    <img
-                      src={URL.createObjectURL(selectedFiles[0])}
-                      alt="Uploaded item"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain'
-                      }}
-                    />
-                  )}
-                </Box>
-              </Grid>
-
-              {/* Item Details */}
-              <Grid item xs={12} md={6}>
-                <Box sx={{ 
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 3
-                }}>
-                  {Object.entries(analysisResult)
-                    .filter(([key]) => key !== 'trend_data' && key !== 'seo_keywords')
-                    .map(([key, value]) => (
-                      <Box key={key}>
-                        <Typography 
-                          variant="subtitle1" 
-                          color="text.secondary"
-                          sx={{ mb: 1, textTransform: 'capitalize' }}
-                        >
-                          {key}
-                        </Typography>
-                        <Typography 
-                          variant="h6"
-                          sx={{ 
-                            fontWeight: 'medium',
-                            color: value === 'Unknown' ? 'text.disabled' : 'text.primary'
-                          }}
-                        >
-                          {value}
-                        </Typography>
-                      </Box>
-                    ))}
-                </Box>
-              </Grid>
+          <Grid container spacing={3}>
+            {/* Image Display */}
+            <Grid item xs={12} md={6}>
+              <StyledPaper>
+                <ImageContainer>
+                  <img src={URL.createObjectURL(selectedFiles[0])} alt="Selected item" />
+                </ImageContainer>
+              </StyledPaper>
             </Grid>
-          </Paper>
+
+            {/* Product Information */}
+            <Grid item xs={12} md={6}>
+              <StyledPaper>
+                <Typography variant="h4" gutterBottom color="primary">
+                  {analysisResult.product.title}
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  {analysisResult.product.description}
+                </Typography>
+                <Box mt={3}>
+                  <Typography variant="h6" gutterBottom color="primary">
+                    Recommended Keywords
+                  </Typography>
+                  <Box display="flex" flexWrap="wrap" gap={1}>
+                    {analysisResult.seo.primary_keywords.map((keyword, index) => (
+                      <KeywordChip
+                        key={index}
+                        label={keyword}
+                        variant="outlined"
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              </StyledPaper>
+            </Grid>
+          </Grid>
 
           {/* SEO Keywords */}
           {analysisResult?.seo_keywords?.length > 0 ? (
