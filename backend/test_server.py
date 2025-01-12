@@ -421,40 +421,53 @@ async def analyze_image(file: UploadFile):
         
         # Validate file
         if not file:
-            log_error("No file provided")
             raise HTTPException(status_code=400, detail="No file provided")
             
         if not file.filename:
-            log_error("No filename provided")
             raise HTTPException(status_code=400, detail="No filename provided")
             
         # Log request details
         log_info(f"Processing file: {file.filename}")
         
+        # Validate file type
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="Invalid file type. Please upload an image file.")
+        
         # Read and validate file content
         try:
             contents = await file.read()
             if not contents:
-                log_error("Empty file received")
                 raise HTTPException(status_code=400, detail="Empty file received")
             log_info(f"File size: {len(contents)} bytes")
         except Exception as e:
             log_error("Error reading file", e)
-            raise HTTPException(status_code=400, detail=f"Error reading file: {str(e)}")
+            raise HTTPException(status_code=400, detail=str(e))
             
         # Process file and get results
         try:
             result = await process_image(contents, file.filename)
-            return JSONResponse(content=result)
+            if not result:
+                raise HTTPException(status_code=500, detail="Failed to process image")
+            return JSONResponse(
+                status_code=200,
+                content=result
+            )
         except Exception as e:
             log_error("Error processing image", e)
-            raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+            raise HTTPException(status_code=500, detail=str(e))
             
-    except HTTPException:
-        raise
+    except HTTPException as he:
+        log_error(f"HTTP Exception: {he.detail}")
+        return JSONResponse(
+            status_code=he.status_code,
+            content={"detail": he.detail}
+        )
     except Exception as e:
-        log_error("Unexpected error in analyze_image", e)
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+        log_error("Unexpected error", e)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        )
 
 async def process_image(contents, filename):
     # Save the uploaded file temporarily

@@ -80,35 +80,36 @@ const App = () => {
     try {
       const formData = new FormData();
       selectedFiles.forEach((file) => {
-        formData.append('files', file);
+        formData.append('file', file);  
       });
 
       const response = await fetch(`${API_URL}/analyze`, {
         method: 'POST',
         body: formData,
-        credentials: 'same-origin',  // Include cookies if needed
+        credentials: 'include',  
         headers: {
           'Accept': 'application/json',
         },
-        mode: 'cors',  // Enable CORS
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       console.log('API Response:', result);
       
-      if (!response.ok) {
-        throw new Error(result.detail || 'Failed to analyze images');
-      }
-
       if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response from server');
+        throw new Error('Invalid response format from server');
       }
 
       console.log('Setting analysis result:', result);
       setAnalysisResult(result);
     } catch (err) {
       console.error('Analysis error:', err);
-      setError(err.message || 'An error occurred during analysis');
+      setError(err.message || 'Failed to analyze image. Please try again.');
       setAnalysisResult(null);
     } finally {
       setLoading(false);
