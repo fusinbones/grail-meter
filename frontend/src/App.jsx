@@ -148,7 +148,7 @@ function App() {
       }
 
       const result = await response.json();
-      console.log('Analysis result:', result);  // Debug log
+      console.log('Raw analysis result:', JSON.stringify(result, null, 2));  // More detailed logging
       setAnalysisResult(result);
     } catch (err) {
       console.error('Error:', err);  // Debug log
