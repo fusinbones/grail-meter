@@ -366,105 +366,65 @@ async def test_endpoint():
     return {"message": "API is working"}
 
 @app.post("/analyze")
-async def analyze_image_route(files: List[UploadFile] = File(...)):
-    """
-    Analyze uploaded images using Google's Gemini Vision model.
-    """
+async def analyze_images(files: List[UploadFile] = File(...)):
+    """Analyze uploaded images."""
     try:
         if not files:
-            raise HTTPException(status_code=400, detail="No files uploaded")
+            raise HTTPException(status_code=400, detail="No files provided")
 
-        # Process the first image (for now)
-        file = files[0]
-        
-        # Validate file type
-        if not file.content_type.startswith('image/'):
-            raise HTTPException(status_code=400, detail="File must be an image")
-        
-        # Create a temporary file to store the upload
-        with NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
-            try:
-                # Read and write the file
-                contents = await file.read()
-                if not contents:
-                    raise HTTPException(status_code=400, detail="Empty file uploaded")
-                
-                temp_file.write(contents)
+        results = []
+        for file in files:
+            # Save the uploaded file temporarily
+            with NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
+                content = await file.read()
+                temp_file.write(content)
                 temp_file.flush()
-                
-                logging.info(f"Temporary file created: {temp_file.name}")
-                
+
+                # Process the image
                 try:
-                    # Get the analysis from Gemini
-                    analysis_text = analyze_with_gemini(temp_file.name)
-                    if not analysis_text:
-                        raise HTTPException(status_code=500, detail="Failed to analyze image with Gemini")
-                    
+                    with Image.open(temp_file.name) as img:
+                        img_bytes = io.BytesIO()
+                        img.save(img_bytes, format='JPEG')
+                        img_bytes = img_bytes.getvalue()
+
+                    # Get Gemini analysis
+                    result = analyze_with_gemini(temp_file.name)
+                    logging.info(f"[Gemini] Analysis result: {result}")
+
+                    # Extract brand and category
+                    brand = result.get('brand', 'Unknown')
+                    category = result.get('category', 'Unknown')
+                    search_term = f"{brand} {category}".strip()
+                    logging.info(f"[Analysis] Search term: {search_term}")
+
+                    # Get trend data
+                    trend_result = get_trend_data(search_term)
+                    logging.info(f"[Analysis] Trend data: {trend_result}")
+
+                    # Combine results
+                    result.update(trend_result)
+                    results.append(result)
+
+                except Exception as e:
+                    logging.error(f"[Analysis] Error processing image: {str(e)}", exc_info=True)
+                    raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
+
+                finally:
+                    # Clean up temp file
                     try:
-                        analysis_json = json.loads(clean_json_string(analysis_text))
-                        logging.info(f"Parsed analysis result: {analysis_json}")
-                    except json.JSONDecodeError as e:
-                        logging.error(f"Failed to parse Gemini response: {str(e)}")
-                        raise HTTPException(status_code=500, detail="Failed to parse analysis results")
-                    
-                    # Get real trend data
-                    trend_data = {
-                        'trend_data': [],
-                        'keywords_data': []
-                    }
-                    
-                    if analysis_json.get('brand') != 'Unknown' and analysis_json.get('category') != 'Unknown':
-                        search_term = f"{analysis_json['brand']} {analysis_json['category']}"
-                        logging.info(f"Getting trend data for search term: {search_term}")
-                        
-                        # Clean brand name for better search results
-                        search_term = search_term.replace('A|X ', '').replace('A/X ', '')
-                        search_term = search_term.strip()
-                        
-                        trend_data = get_trend_data(search_term)
-                        logging.info(f"Received trend data: {trend_data}")
-                    else:
-                        logging.warning("Brand or category is Unknown, using Gemini fallback")
-                        search_term = analysis_json.get('category', 'fashion item')
-                        trend_data = get_gemini_fallback_data(search_term)
-                    
-                    # Update keywords if we have them
-                    if trend_data['keywords_data']:
-                        analysis_json['seo_keywords'] = trend_data['keywords_data']
-                        logging.info(f"Updated SEO keywords with {len(trend_data['keywords_data'])} items")
-                    
-                    # Create the response
-                    response = {
-                        **analysis_json,  # Include all fields from analysis
-                        "trend_data": trend_data['trend_data'],
-                        "seo_keywords": trend_data['keywords_data']  # Use consistent key name
-                    }
-                    
-                    logging.info("Successfully created response with trend data and analysis")
-                    return response
-                    
-                except Exception as e:
-                    logging.error(f"Error in analysis: {str(e)}", exc_info=True)
-                    raise HTTPException(status_code=500, detail=f"Error analyzing image: {str(e)}")
-                
-            except HTTPException:
-                raise
-            except Exception as e:
-                logging.error(f"Error processing file: {str(e)}", exc_info=True)
-                raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
-            finally:
-                # Clean up the temporary file
-                try:
-                    os.unlink(temp_file.name)
-                    logging.info(f"Temporary file deleted: {temp_file.name}")
-                except Exception as e:
-                    logging.error(f"Error deleting temporary file: {str(e)}")
-    
-    except HTTPException:
-        raise
+                        os.unlink(temp_file.name)
+                    except Exception as e:
+                        logging.error(f"[Analysis] Error deleting temp file: {str(e)}")
+
+        if not results:
+            raise HTTPException(status_code=500, detail="No results generated")
+
+        logging.info(f"[Analysis] Final results: {results[0]}")
+        return results[0]
+
     except Exception as e:
-        logging.error(f"Error in analyze_image_route: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+        logging.error(f"[Analysis] Critical error: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")
 async def upload_file(files: List[UploadFile] = File(...)):

@@ -94,6 +94,7 @@ const App = () => {
       });
 
       const result = await response.json();
+      console.log('API Response:', result);
       
       if (!response.ok) {
         throw new Error(result.detail || 'Failed to analyze images');
@@ -103,6 +104,7 @@ const App = () => {
         throw new Error('Invalid response from server');
       }
 
+      console.log('Setting analysis result:', result);
       setAnalysisResult(result);
     } catch (err) {
       console.error('Analysis error:', err);

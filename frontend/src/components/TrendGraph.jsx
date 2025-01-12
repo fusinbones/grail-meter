@@ -24,6 +24,7 @@ const TrendGraph = ({ title, trendData }) => {
   };
 
   if (!trendData || !Array.isArray(trendData) || trendData.length === 0) {
+    console.log('TrendGraph: No trend data available', { trendData });
     return (
       <Box sx={containerStyle}>
         <Typography variant="body1" color="textSecondary">
@@ -34,6 +35,7 @@ const TrendGraph = ({ title, trendData }) => {
   }
 
   // Format dates and ensure proper data structure
+  console.log('TrendGraph: Raw trend data:', trendData);
   const formattedData = trendData.map(point => ({
     date: new Date(point.date).toLocaleDateString('en-US', {
       month: 'short',
@@ -41,6 +43,7 @@ const TrendGraph = ({ title, trendData }) => {
     }),
     volume: typeof point.volume === 'number' ? point.volume : 0
   }));
+  console.log('TrendGraph: Formatted data:', formattedData);
 
   return (
     <Box sx={containerStyle}>
