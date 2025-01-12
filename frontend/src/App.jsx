@@ -7,13 +7,15 @@ import CloseIcon from '@mui/icons-material/Close';
 import './App.css';
 
 const StyledPaper = styled(Paper)(({ theme }) => `
-  background-color: transparent;
-  box-shadow: none;
+  background-color: #FFFFFF;
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
   height: 100%;
   & .glass-card {
     height: 100%;
     display: flex;
     flex-direction: column;
+    padding: 24px;
   }
 `);
 
@@ -25,9 +27,8 @@ const ImageContainer = styled(Box)(({ theme }) => `
   align-items: center;
   overflow: hidden;
   border-radius: 16px;
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #F8F9FD;
+  border: 1px solid #E8EAF2;
   & img {
     max-width: 100%;
     max-height: 100%;
@@ -41,11 +42,26 @@ const ImageContainer = styled(Box)(({ theme }) => `
 
 const KeywordChip = styled(Chip)(({ theme }) => `
   margin: 4px;
-  background-color: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.87);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: #F0F2F8;
+  color: #4A4C58;
+  border: none;
+  font-weight: 500;
   &:hover {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: #E8EAF2;
+    transform: translateY(-2px);
+  }
+  transition: all 0.3s ease;
+`);
+
+const StyledButton = styled(Button)(({ theme }) => `
+  background-color: #6C5CE7;
+  color: #FFFFFF;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: none;
+  &:hover {
+    background-color: #5A4AD1;
     transform: translateY(-2px);
   }
   transition: all 0.3s ease;
@@ -150,7 +166,7 @@ function App() {
         align="center" 
         sx={{ 
           mb: { xs: 2, md: 4 }, 
-          color: 'rgba(255, 255, 255, 0.87)',
+          color: '#4A4C58',
           fontSize: { xs: '2rem', md: '3rem' },
           fontWeight: 600,
           textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
@@ -183,26 +199,13 @@ function App() {
           <Grid item xs={12} md={6}>
             <StyledPaper>
               <div className="glass-card" style={{ justifyContent: 'center', alignItems: 'center' }}>
-                <Button
+                <StyledButton
                   variant="contained"
                   startIcon={<CameraAltIcon />}
                   onClick={startCamera}
-                  sx={{
-                    fontSize: { xs: '1rem', md: '1.2rem' },
-                    py: 2,
-                    px: 4,
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    backdropFilter: 'blur(8px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    '&:hover': {
-                      background: 'rgba(255, 255, 255, 0.2)',
-                      transform: 'translateY(-2px)'
-                    },
-                    transition: 'all 0.3s ease'
-                  }}
                 >
                   Take Photo
-                </Button>
+                </StyledButton>
               </div>
             </StyledPaper>
           </Grid>
@@ -225,13 +228,13 @@ function App() {
                 playsInline
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />
-              <Button
+              <StyledButton
                 variant="contained"
                 onClick={captureImage}
                 className="camera-button"
               >
                 Capture
-              </Button>
+              </StyledButton>
             </div>
           </div>
         </StyledPaper>
@@ -239,7 +242,7 @@ function App() {
 
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress sx={{ color: 'rgba(255, 255, 255, 0.87)' }} />
+          <CircularProgress sx={{ color: '#6C5CE7' }} />
         </Box>
       )}
 
@@ -263,15 +266,15 @@ function App() {
           <Grid item xs={12} md={6}>
             <StyledPaper>
               <div className="glass-card">
-                <Typography variant="h5" gutterBottom sx={{ color: 'rgba(255, 255, 255, 0.87)' }}>
+                <Typography variant="h5" gutterBottom sx={{ color: '#4A4C58' }}>
                   Analysis Results
                 </Typography>
                 
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6" sx={{ color: '#90caf9' }}>
+                  <Typography variant="h6" sx={{ color: '#6C5CE7' }}>
                     {analysisResult.product.title}
                   </Typography>
-                  <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                  <Typography variant="subtitle1" sx={{ color: '#4A4C58' }}>
                     Condition: {analysisResult.seo.condition}/10
                   </Typography>
                 </Box>
