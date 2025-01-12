@@ -368,73 +368,106 @@ def get_top_keywords(keywords: List[str], count: int) -> List[str]:
     sorted_keywords = sorted(keywords, key=keyword_priority, reverse=True)
     return sorted_keywords[:count]  # Ensure we only return 5 keywords
 
+class ProxyManager:
+    def __init__(self):
+        self.base_url = "usa.rotating.proxyrack.net"
+        self.auth = "mcherchSUH5TDY-APM77K0-K703SNY-JIMAOKI-YIEAGRU-LVFTB2M-ZJOG99K"
+        self.ports = list(range(10000, 10250))  # Ports from 10000 to 10249
+        
+    def get_proxy(self):
+        port = random.choice(self.ports)
+        proxy_url = f"{self.base_url}:{port}{self.auth}"
+        return {
+            'http': f'http://{proxy_url}',
+            'https': f'http://{proxy_url}'
+        }
+
 def search_ebay_listings(query):
     try:
+        proxy_manager = ProxyManager()
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
         }
         
-        # Format the search URL
-        search_url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sacat=0&LH_BIN=1"
+        # Format the search URL - only Buy It Now listings
+        search_url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sacat=0&LH_BIN=1&rt=nc&LH_ItemCondition=1000|1500|2000|2500|3000"
         
-        log_info(f"Searching eBay with URL: {search_url}")
-        response = requests.get(search_url, headers=headers)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        listings = []
-        
-        # Find all listing items
-        items = soup.find_all('div', class_='s-item__info')
-        for item in items[:5]:  # Get top 5 listings
+        max_retries = 3
+        for attempt in range(max_retries):
             try:
-                title_elem = item.find('div', class_='s-item__title')
-                price_elem = item.find('span', class_='s-item__price')
-                condition_elem = item.find('span', class_='SECONDARY_INFO')
-                link_elem = item.find('a', class_='s-item__link')
+                proxies = proxy_manager.get_proxy()
+                log_info(f"Searching eBay with URL: {search_url} (Attempt {attempt + 1})")
+                response = requests.get(search_url, headers=headers, proxies=proxies, timeout=10)
+                response.raise_for_status()
                 
-                if not all([title_elem, price_elem, link_elem]):
-                    continue
-                    
-                title = title_elem.get_text(strip=True)
-                if title.lower().startswith('new listing'):
-                    title = title[11:].strip()
-                    
-                price_text = price_elem.get_text(strip=True).replace('$', '').replace(',', '')
-                try:
-                    price = float(re.search(r'\d+\.?\d*', price_text).group())
-                except:
-                    continue
-                    
-                condition = condition_elem.get_text(strip=True) if condition_elem else "Not Specified"
-                url = link_elem.get('href', '')
+                soup = BeautifulSoup(response.text, 'lxml')
+                listings = []
                 
-                # Validate the URL
-                if not url.startswith('https://www.ebay.com/itm/'):
-                    continue
+                # Find all listing items
+                items = soup.find_all('div', class_='s-item__info')
+                for item in items[:5]:  # Get top 5 listings
+                    try:
+                        title_elem = item.find('div', class_='s-item__title')
+                        price_elem = item.find('span', class_='s-item__price')
+                        condition_elem = item.find('span', class_='SECONDARY_INFO')
+                        link_elem = item.find('a', class_='s-item__link')
+                        
+                        if not all([title_elem, price_elem, link_elem]):
+                            continue
+                            
+                        title = title_elem.get_text(strip=True)
+                        if title.lower().startswith('new listing'):
+                            title = title[11:].strip()
+                            
+                        price_text = price_elem.get_text(strip=True).replace('$', '').replace(',', '')
+                        try:
+                            price = float(re.search(r'\d+\.?\d*', price_text).group())
+                        except:
+                            continue
+                            
+                        condition = condition_elem.get_text(strip=True) if condition_elem else "Not Specified"
+                        url = link_elem.get('href', '')
+                        
+                        # Validate the URL and check if listing exists
+                        if not url.startswith('https://www.ebay.com/itm/'):
+                            continue
+                            
+                        # Verify the listing exists
+                        listing_response = requests.get(url, headers=headers, proxies=proxies, timeout=10)
+                        if listing_response.status_code != 200 or "This listing was ended by the seller because the item is no longer available." in listing_response.text:
+                            continue
+                            
+                        listings.append({
+                            "title": title,
+                            "price": price,
+                            "condition": condition,
+                            "url": url
+                        })
+                        
+                    except Exception as e:
+                        log_error(f"Error processing listing: {str(e)}")
+                        continue
+                        
+                if listings:
+                    # Calculate average price
+                    prices = [listing["price"] for listing in listings]
+                    average_price = round(sum(prices) / len(prices), 2)
                     
-                listings.append({
-                    "title": title,
-                    "price": price,
-                    "condition": condition,
-                    "url": url
-                })
-                
+                    return {
+                        "listings": listings,
+                        "averagePrice": average_price
+                    }
+                    
             except Exception as e:
-                log_error(f"Error processing listing: {str(e)}")
+                log_error(f"Error in attempt {attempt + 1}: {str(e)}")
+                if attempt == max_retries - 1:
+                    raise
                 continue
                 
-        if not listings:
-            raise Exception("No valid listings found")
-            
-        # Calculate average price
-        prices = [listing["price"] for listing in listings]
-        average_price = round(sum(prices) / len(prices), 2)
-        
-        return {
-            "listings": listings,
-            "averagePrice": average_price
-        }
+        raise Exception("No valid listings found after all retries")
         
     except Exception as e:
         log_error(f"Error in search_ebay_listings: {str(e)}")
