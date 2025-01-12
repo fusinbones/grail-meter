@@ -10,7 +10,7 @@ import io
 import google.generativeai as genai
 from pytrends.request import TrendReq
 import pandas as pd
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import json
 import requests
 from datetime import datetime, timedelta
@@ -22,6 +22,25 @@ import sys
 
 # Load environment variables
 load_dotenv()
+
+# Configure CORS
+origins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://grail-meter.vercel.app",
+]
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
+)
 
 # Configure logging
 logging.basicConfig(
@@ -37,30 +56,6 @@ def log_error(message: str, error: Optional[Exception] = None):
         logging.error(f"{message}: {str(error)}")
     else:
         logging.error(message)
-
-# Initialize FastAPI app
-app = FastAPI()
-
-# Configure CORS - must be added before any routes
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://grail-meter.vercel.app",
-        "http://localhost:3000",  # For local development
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "Access-Control-Allow-Origin",
-        "Access-Control-Allow-Methods",
-        "Access-Control-Allow-Headers",
-        "Access-Control-Allow-Credentials",
-    ],
-    expose_headers=["*"],
-    max_age=3600,
-)
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
@@ -248,171 +243,60 @@ def get_free_proxies():
         log_error(f"[Proxy] Error fetching proxy list: {str(e)}")
         return []
 
-def get_trend_data(search_term):
-    """Get trend data using PyTrends."""
+async def get_trend_data(search_term: str) -> List[Dict[str, Any]]:
     try:
         log_info(f"[PyTrends] Starting trend data fetch for: {search_term}")
         
-        # Clean search term and prepare fallback terms
-        search_term = search_term.strip()
-        if not search_term or len(search_term) < 2:
-            log_info(f"[PyTrends] Invalid search term: {search_term}")
-            return {'trend_data': [], 'keywords_data': []}
+        # Create shorter search terms for better results
+        terms = [search_term]
+        words = search_term.split()
+        if len(words) > 2:
+            terms.append(' '.join(words[-2:]))  # Last two words
+            terms.append(words[-1])  # Last word
         
-        # Create list of search terms from specific to broad
-        terms = []
-        # Original term
-        terms.append(search_term)
-        # Remove brand if present
-        if ' ' in search_term:
-            terms.append(search_term.split(' ', 1)[1])
-        # Add general category
-        if 'hoodie' in search_term.lower():
-            terms.append('hoodie fashion')
-        elif 'jacket' in search_term.lower():
-            terms.append('jacket fashion')
-        elif 'shirt' in search_term.lower():
-            terms.append('shirt fashion')
-        elif 'pants' in search_term.lower():
-            terms.append('pants fashion')
-        else:
-            terms.append('streetwear fashion')
-            
         log_info(f"[PyTrends] Search terms from specific to broad: {terms}")
-
-        # Use rotating proxy with authentication
-        proxy_host = "usa.rotating.proxyrack.net"
-        proxy_port = "10100"  # Try a different port
-        proxy_auth = "mcherchSUH5TDY-APM77K0-K703SNY-JIMAOKI-YIEAGRU-LVFTB2M-ZJOG99K"
         
-        # Format the proxy URL with the auth token as the username
-        proxy_url = f"http://{proxy_auth}@{proxy_host}:{proxy_port}"
+        pytrends = TrendReq(hl='en-US', tz=360, timeout=(3.0, 10.0))
+        pytrends.build_payload(
+            terms,
+            cat=0,
+            timeframe='today 12-m',
+            geo='',
+            gprop=''
+        )
         
-        # Configure proxy with authentication
-        proxy_config = {
-            'http': proxy_url,
-            'https': proxy_url
-        }
+        # Get interest over time data
+        trend_data = pytrends.interest_over_time()
         
-        # Custom headers to mimic a real browser
-        custom_headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Referer': 'https://trends.google.com/',
-            'DNT': '1',
-        }
-        custom_headers.update({
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Cache-Control': 'max-age=0',
-        })
-        
-        # Initialize PyTrends with retry mechanism
-        retry_ports = [10100, 10150, 10200]
-        last_error = None
-        
-        for attempt, port in enumerate(retry_ports, 1):
-            try:
-                if attempt > 1:
-                    proxy_url = f"http://{proxy_auth}@{proxy_host}:{port}"
-                    proxy_config = {'http': proxy_url, 'https': proxy_url}
-                    log_info(f"[PyTrends] Retry {attempt} with port {port}")
-                
-                pytrends = TrendReq(
-                    hl='en-US',
-                    tz=360,
-                    timeout=(15,15),
-                    retries=2,
-                    backoff_factor=1.5,
-                    requests_args={
-                        'verify': True,
-                        'headers': custom_headers,
-                        'allow_redirects': True,
-                        'proxies': proxy_config
-                    }
+        if trend_data.empty:
+            log_info("[PyTrends] No trend data found, trying with simpler term")
+            # Try with simpler term if no data found
+            if len(terms) > 1:
+                pytrends.build_payload(
+                    [terms[1]],
+                    cat=0,
+                    timeframe='today 12-m',
+                    geo='',
+                    gprop=''
                 )
-                break
-            except Exception as e:
-                last_error = e
-                log_error(f"[PyTrends] Initialization attempt {attempt} failed", e)
-                if attempt == len(retry_ports):
-                    raise Exception(f"All PyTrends initialization attempts failed. Last error: {str(last_error)}")
+                trend_data = pytrends.interest_over_time()
         
-        # Try each term until we get data
-        for term in terms:
-            try:
-                log_info(f"[PyTrends] Attempting to build payload for term: {term}")
-                pytrends.build_payload([term], timeframe='today 12-m')
-                log_info("[PyTrends] Successfully built payload")
-                
-                log_info("[PyTrends] Fetching interest over time...")
-                interest_over_time_df = pytrends.interest_over_time()
-                
-                if not interest_over_time_df.empty:
-                    log_info(f"[PyTrends] Got interest over time data with shape: {interest_over_time_df.shape}")
-                    
-                    # Process trend data
-                    trend_data = []
-                    for index, row in interest_over_time_df.iterrows():
-                        try:
-                            trend_data.append({
-                                'date': index.strftime('%Y-%m-%d'),
-                                'value': int(row[term])
-                            })
-                        except Exception as e:
-                            log_error(f"[PyTrends] Error processing trend point: {e}")
-                            continue
-                    
-                    log_info(f"[PyTrends] Processed {len(trend_data)} trend points")
-                    
-                    # Get related queries
-                    log_info("[PyTrends] Fetching related queries...")
-                    related = pytrends.related_queries()
-                    log_info(f"[PyTrends] Got related queries response: {type(related)}")
-                    
-                    keywords_data = []
-                    if related:
-                        log_info(f"[PyTrends] Found related queries for terms: {list(related.keys())}")
-                        if term in related:
-                            term_data = related[term]
-                            log_info(f"[PyTrends] Term data types: {[k + ': ' + str(type(v)) for k, v in term_data.items() if v is not None]}")
-                            
-                            top_df = term_data.get('top')
-                            if isinstance(top_df, pd.DataFrame) and not top_df.empty:
-                                log_info(f"[PyTrends] Processing top queries DataFrame with shape: {top_df.shape}")
-                                for _, row in top_df.iterrows():
-                                    try:
-                                        keywords_data.append({
-                                            'keyword': str(row['query']),
-                                            'volume': int(row['value'])
-                                        })
-                                    except (ValueError, KeyError, TypeError) as e:
-                                        log_error(f"[PyTrends] Error processing keyword row: {e}")
-                                        continue
-                    
-                    log_info(f"[PyTrends] Successfully processed {len(keywords_data)} keywords")
-                    return {
-                        'trend_data': trend_data,
-                        'keywords_data': keywords_data
-                    }
-                else:
-                    log_info(f"[PyTrends] No interest over time data for term: {term}")
-                    continue
-                    
-            except Exception as e:
-                log_error(f"[PyTrends] Error processing term '{term}'", e)
-                continue
-        
-        # If we get here, no terms worked
-        log_error("[PyTrends] No data found with any search terms")
-        return {'trend_data': [], 'keywords_data': []}
+        if trend_data.empty:
+            return []
             
+        # Convert to list of dictionaries
+        result = []
+        for date, row in trend_data.iterrows():
+            result.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'volume': int(row[terms[0]])
+            })
+            
+        return result
+        
     except Exception as e:
-        log_error("[PyTrends] Critical error", e)
-        return {'trend_data': [], 'keywords_data': []}
+        log_error("[PyTrends] Error fetching trend data", e)
+        return []
 
 @app.post("/analyze")
 async def analyze_image(file: UploadFile):
@@ -502,7 +386,7 @@ async def process_image(contents, filename):
                     # Get trend data
                     try:
                         log_info("Starting PyTrends data fetch")
-                        trend_result = get_trend_data(search_term)
+                        trend_result = await get_trend_data(search_term)
                         log_info(f"PyTrends data: {trend_result}")
 
                         # Combine results
