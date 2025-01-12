@@ -296,26 +296,28 @@ def get_trend_data(search_term):
             'DNT': '1',
         }
 
-        # Use the provided proxy with authentication if needed
-        proxy_host = "5.79.66.2"
-        proxy_port = "13010"
+        # Use rotating proxy with authentication
+        proxy_host = "usa.rotating.proxyrack.net"
+        proxy_port = "10000"  # We'll use the first port, they're all equivalent
+        proxy_auth = "mcherchSUH5TDY-APM77K0-K703SNY-JIMAOKI-YIEAGRU-LVFTB2M-ZJOG99K"
+        
+        # Format: hostname:port:username:password
+        proxy_url = f"http://{proxy_auth}@{proxy_host}:{proxy_port}"
         proxy_config = {
-            'http': f'http://{proxy_host}:{proxy_port}',
-            'https': f'http://{proxy_host}:{proxy_port}'  # Use HTTP even for HTTPS connections
+            'http': proxy_url,
+            'https': proxy_url
         }
         
-        log_info(f"[PyTrends] Using proxy: {proxy_host}:{proxy_port}")
+        log_info(f"[PyTrends] Using rotating proxy: {proxy_host}:{proxy_port}")
         
         # Test proxy connection before using it
         try:
             log_info("[PyTrends] Testing proxy connection...")
-            # Try HTTP first
             test_response = requests.get('http://trends.google.com', 
                                       proxies=proxy_config, 
                                       timeout=10,
                                       headers=custom_headers,
-                                      allow_redirects=True,
-                                      verify=False)  # Disable SSL verification for the test
+                                      allow_redirects=True)
             log_info(f"[PyTrends] Proxy test status code: {test_response.status_code}")
             log_info(f"[PyTrends] Proxy test URL after redirects: {test_response.url}")
         except Exception as e:
@@ -332,7 +334,7 @@ def get_trend_data(search_term):
                 retries=2,
                 backoff_factor=1.5,
                 requests_args={
-                    'verify': False,  # Disable SSL verification
+                    'verify': True,  # Enable SSL verification since we're using a trusted proxy
                     'headers': custom_headers,
                     'allow_redirects': True,
                     'proxies': proxy_config
