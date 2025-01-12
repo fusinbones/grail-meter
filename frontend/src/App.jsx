@@ -1,35 +1,8 @@
-import React, { useState, useRef } from 'react';
-import {
-  Container,
-  Box,
-  Typography,
-  Paper,
-  Button,
-  Grid,
-  List,
-  ListItem,
-  ListItemText,
-  LinearProgress,
-  Alert,
-  CircularProgress,
-  IconButton,
-  ButtonGroup,
-} from '@mui/material';
+import React, { useState } from 'react';
+import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import CloseIcon from '@mui/icons-material/Close';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
-import SearchIcon from '@mui/icons-material/Search';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-import CameraAltIcon from '@mui/icons-material/CameraAlt';
-import TrendGraph from './components/TrendGraph';
-
-const GlassPaper = styled(Paper)(({ theme }) => ({
-  backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  backdropFilter: 'blur(10px)',
-  padding: theme.spacing(3),
-  marginBottom: theme.spacing(2)
-}));
+import { DropzoneArea } from 'mui-file-dropzone';
+import './App.css';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),
@@ -67,472 +40,186 @@ const KeywordChip = styled(Chip)(({ theme }) => ({
   },
 }));
 
-const App = () => {
-  const fileInputRef = useRef(null);
-  const cameraInputRef = useRef(null);
-  const [selectedFiles, setSelectedFiles] = useState([]);
+function App() {
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imageUrl, setImageUrl] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
 
-  const API_URL = import.meta.env.PROD 
-    ? 'https://grail-meter-production.up.railway.app'
-    : 'http://localhost:8000';
-
-  const handleFileSelect = (event) => {
-    const files = Array.from(event.target.files);
-    if (files.length > 0) {
-      // Validate file types
-      const validFiles = files.filter(file => 
-        file.type.startsWith('image/')
-      );
-      
-      if (validFiles.length === 0) {
-        setError('Please select valid image files (JPG, PNG, GIF)');
-        return;
-      }
-
-      setSelectedFiles(prevFiles => [...prevFiles, ...validFiles]);
-      event.target.value = ''; // Reset input
+  const handleImageChange = async (files) => {
+    if (files && files.length > 0) {
+      const file = files[0];
+      setSelectedImage(file);
+      setImageUrl(URL.createObjectURL(file));
+      await analyzeImage(file);
     }
   };
 
-  const handleRemoveImage = (index) => {
-    setSelectedFiles(prevFiles => 
-      prevFiles.filter((_, i) => i !== index)
-    );
-  };
-
-  const handleAnalyze = async () => {
-    if (selectedFiles.length === 0) {
-      setError('Please select at least one image to analyze');
-      return;
-    }
-
+  const analyzeImage = async (file) => {
     setLoading(true);
     setError(null);
-    setAnalysisResult(null); // Reset previous results
-
     try {
       const formData = new FormData();
-      selectedFiles.forEach((file) => {
-        formData.append('file', file);  
-      });
+      formData.append('file', file);
 
-      const response = await fetch(`${API_URL}/analyze`, {
+      const response = await fetch('https://grail-meter-production.up.railway.app/analyze', {
         method: 'POST',
         body: formData,
-        credentials: 'include',  
-        headers: {
-          'Accept': 'application/json',
-        },
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server error response:', errorText);
-        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+        throw new Error('Failed to analyze image');
       }
 
       const result = await response.json();
-      console.log('API Response:', result);
-      
-      if (!result || typeof result !== 'object') {
-        throw new Error('Invalid response format from server');
-      }
-
-      console.log('Setting analysis result:', result);
+      console.log('Analysis result:', result);  // Debug log
       setAnalysisResult(result);
     } catch (err) {
-      console.error('Analysis error:', err);
-      setError(err.message || 'Failed to analyze image. Please try again.');
-      setAnalysisResult(null);
+      console.error('Error:', err);  // Debug log
+      setError('Error analyzing image. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCameraCapture = () => {
-    // Implement camera capture functionality
-  };
-
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header */}
-      <Box sx={{ mb: 6, textAlign: 'center' }}>
-        <Typography variant="h3" component="h1" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-          Grail Meter
-        </Typography>
-        <Typography variant="h6" color="text.secondary" sx={{ mb: 4 }}>
-          Analyze your items and discover their market trends
-        </Typography>
-      </Box>
+      <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ mb: 4, color: '#1a237e' }}>
+        Grail Meter
+      </Typography>
 
-      {/* Main Content */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          p: 4, 
-          borderRadius: 3,
-          bgcolor: 'background.default',
-          border: '1px solid',
-          borderColor: 'divider'
-        }}
-      >
-        <Box>
-          {/* Upload Section */}
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center',
-            gap: 2,
-            mb: 4
-          }}>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileSelect}
-              style={{ display: 'none' }}
-              id="file-input"
-            />
-            
-            {/* Upload Buttons */}
-            <Box sx={{ 
-              display: 'flex', 
-              gap: 2, 
-              flexWrap: 'wrap',
-              justifyContent: 'center'
-            }}>
-              <label htmlFor="file-input">
-                <Button
-                  component="span"
-                  variant="contained"
-                  startIcon={<UploadFileIcon />}
-                  sx={{ 
-                    px: 4,
-                    py: 1.5,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontSize: '1.1rem'
-                  }}
-                >
-                  Choose Files
-                </Button>
-              </label>
-              <Button
-                onClick={handleCameraCapture}
-                variant="outlined"
-                startIcon={<CameraAltIcon />}
-                sx={{ 
-                  px: 4,
-                  py: 1.5,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontSize: '1.1rem'
-                }}
-              >
-                Take Photo
-              </Button>
-            </Box>
-          </Box>
+      {!selectedImage && (
+        <StyledPaper sx={{ mb: 4 }}>
+          <DropzoneArea
+            acceptedFiles={['image/*']}
+            dropzoneText="Drag and drop an image here or click"
+            onChange={handleImageChange}
+            maxFileSize={5000000}
+            showFileNames
+            showPreviewsInDropzone={false}
+            useChipsForPreview
+            showAlerts={false}
+          />
+        </StyledPaper>
+      )}
 
-          {/* Image Preview Grid */}
-          {selectedFiles.length > 0 && (
-            <Box sx={{ width: '100%', mt: 3 }}>
-              <Grid container spacing={3}>
-                {Array.from(selectedFiles).map((file, index) => (
-                  <Grid item xs={12} sm={6} md={4} key={index}>
-                    <Paper
-                      elevation={2}
-                      sx={{
-                        position: 'relative',
-                        paddingTop: '100%',
-                        borderRadius: 2,
-                        overflow: 'hidden',
-                        transition: 'transform 0.2s ease-in-out',
-                        '&:hover': {
-                          transform: 'scale(1.02)'
-                        }
-                      }}
-                    >
-                      <Box
-                        component="img"
-                        src={URL.createObjectURL(file)}
-                        alt={`Preview ${index + 1}`}
-                        sx={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain',
-                          bgcolor: 'background.paper'
-                        }}
-                      />
-                      <IconButton
-                        size="small"
-                        onClick={() => handleRemoveImage(index)}
-                        sx={{
-                          position: 'absolute',
-                          top: 8,
-                          right: 8,
-                          bgcolor: 'rgba(255, 255, 255, 0.9)',
-                          backdropFilter: 'blur(4px)',
-                          '&:hover': {
-                            bgcolor: 'rgba(255, 255, 255, 1)'
-                          }
-                        }}
-                      >
-                        <CloseIcon fontSize="small" />
-                      </IconButton>
-                    </Paper>
-                  </Grid>
-                ))}
-              </Grid>
-
-              {/* Analyze Button */}
-              <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                <Button
-                  variant="contained"
-                  onClick={handleAnalyze}
-                  disabled={loading}
-                  startIcon={loading ? <CircularProgress size={20} /> : <SearchIcon />}
-                  sx={{ 
-                    px: 6,
-                    py: 1.5,
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontSize: '1.1rem'
-                  }}
-                >
-                  {loading ? 'Analyzing...' : 'Analyze Images'}
-                </Button>
-              </Box>
-            </Box>
-          )}
-        </Box>
-      </Paper>
-
-      {/* Loading State */}
       {loading && (
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            mt: 4,
-            p: 4,
-            borderRadius: 3,
-            bgcolor: 'background.default',
-            border: '1px solid',
-            borderColor: 'divider',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 2
-          }}
-        >
-          <CircularProgress size={40} />
-          <Typography variant="h6" color="text.secondary">
-            Analyzing your images...
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            This may take a few moments
-          </Typography>
-        </Paper>
-      )}
-
-      {/* Error Message */}
-      {error && (
-        <Alert 
-          severity="error" 
-          sx={{ 
-            mt: 3,
-            borderRadius: 2
-          }}
-          action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={() => setError(null)}
-            >
-              Dismiss
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
-      )}
-
-      {/* Analysis Results */}
-      {analysisResult && (
-        <Box sx={{ mt: 6 }}>
-          <Typography 
-            variant="h4" 
-            gutterBottom 
-            align="center"
-            sx={{ 
-              fontWeight: 'medium',
-              color: 'primary.main',
-              mb: 4
-            }}
-          >
-            Analysis Results
-          </Typography>
-          
-          {/* Image Preview and Item Details */}
-          <Grid container spacing={3}>
-            {/* Image Display */}
-            <Grid item xs={12} md={6}>
-              <StyledPaper>
-                <ImageContainer>
-                  <img src={URL.createObjectURL(selectedFiles[0])} alt="Selected item" />
-                </ImageContainer>
-              </StyledPaper>
-            </Grid>
-
-            {/* Product Information */}
-            <Grid item xs={12} md={6}>
-              <StyledPaper>
-                <Typography variant="h4" gutterBottom color="primary">
-                  {analysisResult.product.title}
-                </Typography>
-                <Typography variant="body1" paragraph>
-                  {analysisResult.product.description}
-                </Typography>
-                <Box mt={3}>
-                  <Typography variant="h6" gutterBottom color="primary">
-                    Recommended Keywords
-                  </Typography>
-                  <Box display="flex" flexWrap="wrap" gap={1}>
-                    {analysisResult.seo.primary_keywords.map((keyword, index) => (
-                      <KeywordChip
-                        key={index}
-                        label={keyword}
-                        variant="outlined"
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              </StyledPaper>
-            </Grid>
-          </Grid>
-
-          {/* SEO Keywords */}
-          {analysisResult?.seo_keywords?.length > 0 ? (
-            <List sx={{ 
-              flex: 1,
-              overflow: 'auto',
-              py: 0
-            }}>
-              {analysisResult.seo_keywords
-                .sort((a, b) => b.volume - a.volume)
-                .map((keyword, index) => (
-                  <ListItem
-                    key={index}
-                    divider={index < analysisResult.seo_keywords.length - 1}
-                    sx={{
-                      px: 2,
-                      py: 1.5,
-                    }}
-                  >
-                    <Box sx={{ width: '100%' }}>
-                      <Box sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between',
-                        mb: 1
-                      }}>
-                        <Typography 
-                          variant="body1" 
-                          sx={{ 
-                            fontWeight: 'medium',
-                            color: 'text.primary'
-                          }}
-                        >
-                          {keyword.keyword}
-                        </Typography>
-                        {keyword.volume && keyword.volume > 0 && (
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              color: 'text.secondary',
-                              backgroundColor: 'background.paper',
-                              px: 1,
-                              py: 0.25,
-                              borderRadius: 1
-                            }}
-                          >
-                            {keyword.volume}
-                          </Typography>
-                        )}
-                      </Box>
-                      <Box sx={{ 
-                        width: '100%',
-                        height: 4,
-                        bgcolor: 'grey.100',
-                        borderRadius: 2,
-                        overflow: 'hidden'
-                      }}>
-                        <Box
-                          sx={{
-                            width: `${(keyword.volume / Math.max(...analysisResult.seo_keywords.map(k => k.volume || 0))) * 100}%`,
-                            height: '100%',
-                            bgcolor: 'primary.main',
-                            transition: 'width 0.5s ease-in-out'
-                          }}
-                        />
-                      </Box>
-                    </Box>
-                  </ListItem>
-                ))}
-            </List>
-          ) : (
-            <Box sx={{ 
-              flex: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              p: 3
-            }}>
-              <Typography color="text.secondary">
-                No search volume data available
-              </Typography>
-            </Box>
-          )}
-
-          {/* Trend Graph */}
-          {analysisResult.trend_data && analysisResult.trend_data.length > 0 && (
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                mt: 4,
-                p: 4,
-                borderRadius: 3,
-                bgcolor: 'background.default',
-                border: '1px solid',
-                borderColor: 'divider'
-              }}
-            >
-              <Typography 
-                variant="h5" 
-                gutterBottom 
-                sx={{ 
-                  mb: 3,
-                  fontWeight: 'medium'
-                }}
-              >
-                Market Trend Analysis
-              </Typography>
-              <TrendGraph 
-                title={`${analysisResult.brand} ${analysisResult.category} Trend`}
-                trendData={analysisResult.trend_data}
-              />
-            </Paper>
-          )}
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
         </Box>
+      )}
+
+      {error && (
+        <Typography color="error" align="center" gutterBottom>
+          {error}
+        </Typography>
+      )}
+
+      {analysisResult && !loading && (
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <StyledPaper>
+              <ImageContainer>
+                {imageUrl && <img src={imageUrl} alt="Selected item" />}
+              </ImageContainer>
+            </StyledPaper>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <StyledPaper>
+              <Typography variant="h5" gutterBottom>
+                Analysis Results
+              </Typography>
+              
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6" color="primary">
+                  {analysisResult.brand} - {analysisResult.category}
+                </Typography>
+                <Typography variant="subtitle1">
+                  Condition: {analysisResult.condition}/10
+                </Typography>
+              </Box>
+
+              {analysisResult.details && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6">Details</Typography>
+                  <Typography variant="body1">
+                    <strong>Materials:</strong> {analysisResult.details.materials}
+                  </Typography>
+                  <Typography variant="body1">
+                    <strong>Colors:</strong> {analysisResult.details.colorway}
+                  </Typography>
+                  <Typography variant="body1">
+                    <strong>Style:</strong> {analysisResult.details.style}
+                  </Typography>
+                  {analysisResult.details.notable_features && (
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="body1">
+                        <strong>Notable Features:</strong>
+                      </Typography>
+                      <ul style={{ marginTop: 4 }}>
+                        {Array.isArray(analysisResult.details.notable_features) 
+                          ? analysisResult.details.notable_features.map((feature, index) => (
+                            <li key={index}>{feature}</li>
+                          ))
+                          : <li>{analysisResult.details.notable_features}</li>
+                        }
+                      </ul>
+                    </Box>
+                  )}
+                </Box>
+              )}
+
+              {analysisResult.estimated_retail_range && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6">Estimated Retail Range</Typography>
+                  <Typography variant="body1">
+                    ${analysisResult.estimated_retail_range.min} - ${analysisResult.estimated_retail_range.max}
+                  </Typography>
+                </Box>
+              )}
+
+              {analysisResult.authenticity_indicators && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6">Authenticity Indicators</Typography>
+                  <ul style={{ marginTop: 4 }}>
+                    {Array.isArray(analysisResult.authenticity_indicators) 
+                      ? analysisResult.authenticity_indicators.map((indicator, index) => (
+                        <li key={index}>{indicator}</li>
+                      ))
+                      : <li>{analysisResult.authenticity_indicators}</li>
+                    }
+                  </ul>
+                </Box>
+              )}
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6">Keywords</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {analysisResult.seo_keywords.map((keyword, index) => (
+                    <KeywordChip key={index} label={keyword} />
+                  ))}
+                </Box>
+              </Box>
+
+              {analysisResult.error && (
+                <Box sx={{ mt: 2, p: 2, bgcolor: '#ffebee', borderRadius: 1 }}>
+                  <Typography color="error">
+                    Error: {analysisResult.error}
+                  </Typography>
+                  {analysisResult.details?.error_type && (
+                    <Typography variant="caption" color="error">
+                      Type: {analysisResult.details.error_type}
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </StyledPaper>
+          </Grid>
+        </Grid>
       )}
     </Container>
   );
-};
+}
 
 export default App;

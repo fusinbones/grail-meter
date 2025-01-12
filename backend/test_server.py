@@ -1,3 +1,4 @@
+from typing import Optional, Dict, List, Union
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -113,7 +114,7 @@ def clean_json_string(json_str: str) -> str:
                 "error": "Failed to parse AI response"
             })
 
-def analyze_with_gemini(image_path: str) -> str:
+def analyze_with_gemini(image_path: str) -> Dict[str, Union[str, int, List[str]]]:
     """Analyze an image with Gemini Vision API."""
     try:
         if not GEMINI_API_KEY:
@@ -136,12 +137,25 @@ def analyze_with_gemini(image_path: str) -> str:
             log_info("Created model instance with gemini-1.5-flash")
             
             # Prepare the prompt
-            prompt = """Analyze this image and provide a JSON response with the following fields:
-            - brand: the brand name or "Generic" if no clear brand
-            - category: the type of clothing (e.g. hoodie, t-shirt, etc.)
-            - condition: a rating from 1-10 of the item's condition
-            - seo_keywords: list of relevant search terms
-            Format as valid JSON only, no other text."""
+            prompt = """Analyze this streetwear image in detail and provide a JSON response with the following fields:
+            {
+                "brand": "Brand name or 'Generic' if unclear",
+                "category": "Specific type of clothing (e.g., hoodie, t-shirt, sneakers)",
+                "condition": "Rating from 1-10 of item condition",
+                "details": {
+                    "materials": "Main materials used",
+                    "colorway": "Primary and secondary colors",
+                    "style": "Style description (e.g., oversized, fitted, vintage)",
+                    "notable_features": "List of distinctive features"
+                },
+                "seo_keywords": ["List", "of", "relevant", "search", "terms"],
+                "authenticity_indicators": ["List", "of", "authenticity", "features"],
+                "estimated_retail_range": {
+                    "min": "Minimum retail price in USD",
+                    "max": "Maximum retail price in USD"
+                }
+            }
+            Provide only valid JSON, no additional text."""
 
             # Generate the analysis
             log_info("Sending request to Gemini API...")
@@ -149,39 +163,82 @@ def analyze_with_gemini(image_path: str) -> str:
             if not response or not response.text:
                 raise Exception("Empty response from Gemini API")
                 
-            log_info("Gemini API response received")
-            log_info(f"Response text: {response.text}")
-
-            # Parse the response as JSON
-            try:
-                # Clean up the response text
-                response_text = response.text.strip()
-                if response_text.startswith('```json'):
-                    response_text = response_text[7:]
-                if response_text.endswith('```'):
-                    response_text = response_text[:-3]
-                response_text = response_text.strip()
-                
-                # Parse JSON
-                result = json.loads(response_text)
-                log_info(f"Parsed Gemini result: {result}")
-                return result
-            except json.JSONDecodeError as e:
-                log_error(f"Failed to parse Gemini response as JSON: {response_text}", e)
-                raise
-
+            # Clean and parse the response
+            cleaned_json = clean_json_string(response.text)
+            result = json.loads(cleaned_json)
+            
+            # Validate required fields
+            required_fields = ['brand', 'category', 'condition', 'seo_keywords']
+            missing_fields = [field for field in required_fields if field not in result]
+            
+            if missing_fields:
+                log_error(f"Missing required fields in API response: {missing_fields}")
+                # Provide default values for missing fields
+                for field in missing_fields:
+                    if field == 'brand':
+                        result['brand'] = 'Unknown'
+                    elif field == 'category':
+                        result['category'] = 'Unspecified'
+                    elif field == 'condition':
+                        result['condition'] = 0
+                    elif field == 'seo_keywords':
+                        result['seo_keywords'] = []
+            
+            # Ensure condition is within valid range
+            if 'condition' in result:
+                try:
+                    condition = float(result['condition'])
+                    result['condition'] = max(1, min(10, condition))  # Clamp between 1 and 10
+                except (ValueError, TypeError):
+                    result['condition'] = 5  # Default to middle value if invalid
+            
+            # Log successful analysis
+            log_info(f"Successfully analyzed image: {result['brand']} {result['category']}")
+            
+            return result
+            
         except Exception as e:
-            log_error(f"Error in Gemini API call", e)
-            raise
+            log_error("Failed to analyze image with Gemini", e)
+            # Return a structured error response
+            return {
+                "brand": "Error",
+                "category": "Error",
+                "condition": 0,
+                "error": str(e),
+                "seo_keywords": [],
+                "details": {
+                    "error_type": type(e).__name__,
+                    "timestamp": datetime.now().isoformat()
+                }
+            }
+{{ ... }}
 
+async def process_uploaded_file(file: UploadFile) -> str:
+    """Process the uploaded file and save it temporarily."""
+    try:
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+            # Read the uploaded file content
+            content = await file.read()
+            
+            # Convert to PIL Image for validation and processing
+            img = Image.open(io.BytesIO(content))
+            
+            # Convert to RGB if needed
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            
+            # Save to temporary file
+            img.save(temp_file.name, format='JPEG')
+            log_info(f"Saved uploaded file to temporary location: {temp_file.name}")
+            
+            return temp_file.name
+            
     except Exception as e:
-        log_error(f"Error in analyze_with_gemini", e)
-        return {
-            "brand": "Unknown",
-            "category": "Unknown",
-            "condition": 5,
-            "seo_keywords": []
-        }
+        log_error("Error processing uploaded file", e)
+        if 'temp_file' in locals() and os.path.exists(temp_file.name):
+            os.remove(temp_file.name)
+        return None
 
 async def analyze_image(file: UploadFile):
     """Analyze an uploaded image using Google's Gemini Vision API."""
@@ -189,12 +246,12 @@ async def analyze_image(file: UploadFile):
         log_info("Starting image analysis")
         
         # Process the uploaded file
-        file_content = await process_uploaded_file(file)
-        if not file_content:
+        temp_file_path = await process_uploaded_file(file)
+        if not temp_file_path:
             raise HTTPException(status_code=400, detail="Failed to process uploaded file")
             
         # Get Gemini analysis
-        gemini_result = await analyze_with_gemini(file_content)
+        gemini_result = analyze_with_gemini(temp_file_path)
         if not gemini_result:
             raise HTTPException(status_code=500, detail="Failed to analyze image with Gemini")
             
