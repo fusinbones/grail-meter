@@ -360,7 +360,7 @@ def get_top_keywords(keywords: List[str], count: int) -> List[str]:
         return 0
     
     sorted_keywords = sorted(keywords, key=keyword_priority, reverse=True)
-    return sorted_keywords[:count]
+    return sorted_keywords[:count]  # Ensure we only return 5 keywords
 
 def analyze_images(image_path):
     try:
@@ -463,7 +463,21 @@ def generate_keywords(caption, product_info):
 
 @app.post("/analyze")
 async def analyze_image_endpoint(file: UploadFile):
-    return await analyze_image(file)
+    try:
+        # Process and save the uploaded file
+        temp_path = await process_uploaded_file(file)
+        
+        # Analyze the image using our new function
+        result = analyze_images(temp_path)
+        
+        # Clean up the temporary file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+            
+        return result
+    except Exception as e:
+        log_error(f"Error in analyze_image_endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
 async def read_root():

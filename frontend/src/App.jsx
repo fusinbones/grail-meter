@@ -295,7 +295,7 @@ function App() {
                   Top 5 Keywords for Listings
                 </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {analysisResult.keywords.slice(0, 5).map((keyword, index) => (
+                  {analysisResult.keywords && analysisResult.keywords.slice(0, 5).map((keyword, index) => (
                     <KeywordChip key={index} label={keyword} />
                   ))}
                 </Box>
