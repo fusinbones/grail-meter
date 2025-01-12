@@ -19,6 +19,7 @@ import signal
 import sys
 import random
 import asyncio
+from urllib.parse import quote_plus
 
 # Load environment variables
 load_dotenv()
@@ -367,6 +368,81 @@ def get_top_keywords(keywords: List[str], count: int) -> List[str]:
     sorted_keywords = sorted(keywords, key=keyword_priority, reverse=True)
     return sorted_keywords[:count]  # Ensure we only return 5 keywords
 
+def search_ebay_listings(query):
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        # Format the search URL
+        search_url = f"https://www.ebay.com/sch/i.html?_nkw={quote_plus(query)}&_sacat=0&LH_BIN=1"
+        
+        log_info(f"Searching eBay with URL: {search_url}")
+        response = requests.get(search_url, headers=headers)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        listings = []
+        
+        # Find all listing items
+        items = soup.find_all('div', class_='s-item__info')
+        for item in items[:5]:  # Get top 5 listings
+            try:
+                title_elem = item.find('div', class_='s-item__title')
+                price_elem = item.find('span', class_='s-item__price')
+                condition_elem = item.find('span', class_='SECONDARY_INFO')
+                link_elem = item.find('a', class_='s-item__link')
+                
+                if not all([title_elem, price_elem, link_elem]):
+                    continue
+                    
+                title = title_elem.get_text(strip=True)
+                if title.lower().startswith('new listing'):
+                    title = title[11:].strip()
+                    
+                price_text = price_elem.get_text(strip=True).replace('$', '').replace(',', '')
+                try:
+                    price = float(re.search(r'\d+\.?\d*', price_text).group())
+                except:
+                    continue
+                    
+                condition = condition_elem.get_text(strip=True) if condition_elem else "Not Specified"
+                url = link_elem.get('href', '')
+                
+                # Validate the URL
+                if not url.startswith('https://www.ebay.com/itm/'):
+                    continue
+                    
+                listings.append({
+                    "title": title,
+                    "price": price,
+                    "condition": condition,
+                    "url": url
+                })
+                
+            except Exception as e:
+                log_error(f"Error processing listing: {str(e)}")
+                continue
+                
+        if not listings:
+            raise Exception("No valid listings found")
+            
+        # Calculate average price
+        prices = [listing["price"] for listing in listings]
+        average_price = round(sum(prices) / len(prices), 2)
+        
+        return {
+            "listings": listings,
+            "averagePrice": average_price
+        }
+        
+    except Exception as e:
+        log_error(f"Error in search_ebay_listings: {str(e)}")
+        return {
+            "listings": [],
+            "averagePrice": 0
+        }
+
 def analyze_images(image_path):
     try:
         log_info("Starting image analysis...")
@@ -406,42 +482,9 @@ def analyze_images(image_path):
         cleaned_json = clean_json_string(response.text)
         result = json.loads(cleaned_json)
         
-        # Second prompt for eBay listings
-        ebay_prompt = f"""Search for eBay listings matching this product: {result['product']['title']}
-        
-        Find the top 5 most similar listings and format the response as valid JSON like this:
-        {{
-            "listings": [
-                {{
-                    "title": "exact listing title",
-                    "price": "price in USD",
-                    "condition": "item condition",
-                    "url": "listing URL"
-                }}
-            ],
-            "averagePrice": "calculated average price in USD"
-        }}
-        
-        Important:
-        1. Only include active listings (not sold)
-        2. Make sure prices are in USD
-        3. Calculate the exact average of the prices
-        4. Only include listings that are very similar to the analyzed item
-        5. Format prices as numbers (e.g., 149.99)
-        6. Make sure URLs are complete and start with https://www.ebay.com/itm/
-        7. Double check that all URLs are valid eBay listing URLs
-        
-        Provide ONLY valid JSON, no additional text."""
-        
-        log_info("Sending eBay analysis request to Gemini API...")
-        ebay_response = model.generate_content([ebay_prompt, img])
-        
-        if not ebay_response or not ebay_response.text:
-            raise Exception("Empty eBay response from Gemini API")
-            
-        # Clean and parse the eBay response
-        ebay_cleaned_json = clean_json_string(ebay_response.text)
-        ebay_result = json.loads(ebay_cleaned_json)
+        # Search eBay with the product title
+        log_info(f"Searching eBay for: {result['product']['title']}")
+        ebay_result = search_ebay_listings(result['product']['title'])
         
         # Add eBay data and SEO score to final result
         result["ebayListings"] = ebay_result["listings"]
