@@ -301,7 +301,7 @@ def get_trend_data(search_term):
         proxy_port = "13010"
         proxy_config = {
             'http': f'http://{proxy_host}:{proxy_port}',
-            'https': f'http://{proxy_host}:{proxy_port}'
+            'https': f'http://{proxy_host}:{proxy_port}'  # Use HTTP even for HTTPS connections
         }
         
         log_info(f"[PyTrends] Using proxy: {proxy_host}:{proxy_port}")
@@ -309,11 +309,15 @@ def get_trend_data(search_term):
         # Test proxy connection before using it
         try:
             log_info("[PyTrends] Testing proxy connection...")
-            test_response = requests.get('https://trends.google.com', 
+            # Try HTTP first
+            test_response = requests.get('http://trends.google.com', 
                                       proxies=proxy_config, 
                                       timeout=10,
-                                      headers=custom_headers)
+                                      headers=custom_headers,
+                                      allow_redirects=True,
+                                      verify=False)  # Disable SSL verification for the test
             log_info(f"[PyTrends] Proxy test status code: {test_response.status_code}")
+            log_info(f"[PyTrends] Proxy test URL after redirects: {test_response.url}")
         except Exception as e:
             log_error("[PyTrends] Proxy test failed", e)
             raise
@@ -328,7 +332,7 @@ def get_trend_data(search_term):
                 retries=2,
                 backoff_factor=1.5,
                 requests_args={
-                    'verify': True,
+                    'verify': False,  # Disable SSL verification
                     'headers': custom_headers,
                     'allow_redirects': True,
                     'proxies': proxy_config
