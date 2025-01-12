@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress } from '@mui/material';
+import React, { useState, useRef } from 'react';
+import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress, Button, IconButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { DropzoneArea } from 'mui-file-dropzone';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
+import CloseIcon from '@mui/icons-material/Close';
 import './App.css';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
@@ -46,6 +48,54 @@ function App() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      videoRef.current.srcObject = stream;
+      streamRef.current = stream;
+      setShowCamera(true);
+    } catch (err) {
+      console.error('Error accessing camera:', err);
+      setError('Unable to access camera. Please check permissions.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setShowCamera(false);
+  };
+
+  const captureImage = async () => {
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      
+      // Convert canvas to blob
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+      const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+      
+      setSelectedImage(file);
+      setImageUrl(URL.createObjectURL(file));
+      stopCamera();
+      await analyzeImage(file);
+    } catch (err) {
+      console.error('Error capturing image:', err);
+      setError('Failed to capture image. Please try again.');
+    }
+  };
 
   const handleImageChange = async (files) => {
     if (files && files.length > 0) {
@@ -89,29 +139,70 @@ function App() {
         Grail Meter
       </Typography>
 
-      {!selectedImage && (
-        <StyledPaper sx={{ mb: 4 }}>
-          <DropzoneArea
-            acceptedFiles={['image/*']}
-            dropzoneText="Drag and drop an image here or click"
-            onChange={handleImageChange}
-            maxFileSize={5000000}
-            showFileNames
-            showPreviewsInDropzone={false}
-            useChipsForPreview
-            showAlerts={false}
-          />
+      {!selectedImage && !showCamera && (
+        <Grid container spacing={2} justifyContent="center">
+          <Grid item xs={12} md={6}>
+            <StyledPaper>
+              <DropzoneArea
+                acceptedFiles={['image/*']}
+                dropzoneText="Drag and drop an image here or click"
+                onChange={handleImageChange}
+                maxFileSize={5000000}
+                showFileNames
+                showPreviewsInDropzone={false}
+                useChipsForPreview
+              />
+            </StyledPaper>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <StyledPaper sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+              <Button
+                variant="contained"
+                startIcon={<CameraAltIcon />}
+                onClick={startCamera}
+                sx={{ fontSize: '1.2rem', py: 2, px: 4 }}
+              >
+                Take Photo
+              </Button>
+            </StyledPaper>
+          </Grid>
+        </Grid>
+      )}
+
+      {showCamera && (
+        <StyledPaper sx={{ position: 'relative', mb: 2 }}>
+          <IconButton
+            onClick={stopCamera}
+            sx={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}
+          >
+            <CloseIcon />
+          </IconButton>
+          <Box sx={{ position: 'relative', width: '100%', height: '500px' }}>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
+            <Button
+              variant="contained"
+              onClick={captureImage}
+              sx={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}
+            >
+              Capture
+            </Button>
+          </Box>
         </StyledPaper>
       )}
 
       {loading && (
-        <Box display="flex" justifyContent="center" my={4}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress />
         </Box>
       )}
 
       {error && (
-        <Typography color="error" align="center" gutterBottom>
+        <Typography color="error" align="center" sx={{ my: 2 }}>
           {error}
         </Typography>
       )}
