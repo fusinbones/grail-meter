@@ -369,47 +369,77 @@ async def analyze_images(files: List[UploadFile] = File(...)):
 
         results = []
         for file in files:
-            # Save the uploaded file temporarily
-            with NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
-                content = await file.read()
-                temp_file.write(content)
-                temp_file.flush()
-
-                # Process the image
-                try:
-                    with Image.open(temp_file.name) as img:
-                        img_bytes = io.BytesIO()
-                        img.save(img_bytes, format='JPEG')
-                        img_bytes = img_bytes.getvalue()
-
-                    # Get Gemini analysis
-                    result = analyze_with_gemini(temp_file.name)
-                    logging.info(f"[Gemini] Analysis result: {result}")
-
-                    # Extract brand and category
-                    brand = result.get('brand', 'Unknown')
-                    category = result.get('category', 'Unknown')
-                    search_term = f"{brand} {category}".strip()
-                    logging.info(f"[Analysis] Search term: {search_term}")
-
-                    # Get trend data
-                    trend_result = get_trend_data(search_term)
-                    logging.info(f"[Analysis] Trend data: {trend_result}")
-
-                    # Combine results
-                    result.update(trend_result)
-                    results.append(result)
-
-                except Exception as e:
-                    logging.error(f"[Analysis] Error processing image: {str(e)}", exc_info=True)
-                    raise HTTPException(status_code=500, detail=f"Error processing image: {str(e)}")
-
-                finally:
-                    # Clean up temp file
+            try:
+                logging.info(f"[Analysis] Processing file: {file.filename}")
+                # Save the uploaded file temporarily
+                with NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
                     try:
-                        os.unlink(temp_file.name)
+                        content = await file.read()
+                        if not content:
+                            raise ValueError("Empty file uploaded")
+                        logging.info(f"[Analysis] File size: {len(content)} bytes")
+                        
+                        temp_file.write(content)
+                        temp_file.flush()
+                        logging.info(f"[Analysis] Saved to temp file: {temp_file.name}")
+
+                        # Process the image
+                        try:
+                            with Image.open(temp_file.name) as img:
+                                img_bytes = io.BytesIO()
+                                img.save(img_bytes, format='JPEG')
+                                img_bytes = img_bytes.getvalue()
+                                logging.info(f"[Analysis] Image processed, size: {len(img_bytes)} bytes")
+
+                            # Get Gemini analysis
+                            try:
+                                result = analyze_with_gemini(temp_file.name)
+                                logging.info(f"[Gemini] Analysis result: {result}")
+
+                                if not result:
+                                    raise ValueError("Empty result from Gemini")
+
+                                # Extract brand and category
+                                brand = result.get('brand', 'Unknown')
+                                category = result.get('category', 'Unknown')
+                                search_term = f"{brand} {category}".strip()
+                                logging.info(f"[Analysis] Search term: {search_term}")
+
+                                # Get trend data
+                                try:
+                                    trend_result = get_trend_data(search_term)
+                                    logging.info(f"[Analysis] Trend data: {trend_result}")
+
+                                    # Combine results
+                                    result.update(trend_result)
+                                    results.append(result)
+                                except Exception as e:
+                                    logging.error(f"[Analysis] Error getting trend data: {str(e)}", exc_info=True)
+                                    raise
+
+                            except Exception as e:
+                                logging.error(f"[Analysis] Error in Gemini analysis: {str(e)}", exc_info=True)
+                                raise
+
+                        except Exception as e:
+                            logging.error(f"[Analysis] Error processing image: {str(e)}", exc_info=True)
+                            raise
+
                     except Exception as e:
-                        logging.error(f"[Analysis] Error deleting temp file: {str(e)}")
+                        logging.error(f"[Analysis] Error handling temp file: {str(e)}", exc_info=True)
+                        raise
+
+                    finally:
+                        # Clean up temp file
+                        try:
+                            os.unlink(temp_file.name)
+                            logging.info(f"[Analysis] Cleaned up temp file: {temp_file.name}")
+                        except Exception as e:
+                            logging.error(f"[Analysis] Error deleting temp file: {str(e)}")
+
+            except Exception as e:
+                logging.error(f"[Analysis] Error processing file {file.filename}: {str(e)}", exc_info=True)
+                raise HTTPException(status_code=500, detail=f"Error processing file {file.filename}: {str(e)}")
 
         if not results:
             raise HTTPException(status_code=500, detail="No results generated")
@@ -417,6 +447,8 @@ async def analyze_images(files: List[UploadFile] = File(...)):
         logging.info(f"[Analysis] Final results: {results[0]}")
         return results[0]
 
+    except HTTPException:
+        raise
     except Exception as e:
         logging.error(f"[Analysis] Critical error: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
