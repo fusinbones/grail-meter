@@ -7,15 +7,14 @@ import CloseIcon from '@mui/icons-material/Close';
 import './App.css';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
+  backgroundColor: 'transparent',
+  boxShadow: 'none',
   height: '100%',
-  backgroundColor: '#ffffff',
-  borderRadius: '12px',
-  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-  transition: 'transform 0.2s ease-in-out',
-  '&:hover': {
-    transform: 'translateY(-2px)',
-  },
+  '& .glass-card': {
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column'
+  }
 }));
 
 const ImageContainer = styled(Box)({
@@ -25,21 +24,31 @@ const ImageContainer = styled(Box)({
   justifyContent: 'center',
   alignItems: 'center',
   overflow: 'hidden',
-  borderRadius: '8px',
-  backgroundColor: '#f5f5f5',
+  borderRadius: '16px',
+  background: 'rgba(0, 0, 0, 0.2)',
+  backdropFilter: 'blur(8px)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
   '& img': {
     maxWidth: '100%',
     maxHeight: '100%',
     objectFit: 'contain',
+    borderRadius: '12px'
   },
-});
+  '@media (max-width: 600px)': {
+    height: '300px'
+  }
+}));
 
 const KeywordChip = styled(Chip)(({ theme }) => ({
   margin: theme.spacing(0.5),
-  backgroundColor: '#e3f2fd',
+  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  color: 'rgba(255, 255, 255, 0.87)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
   '&:hover': {
-    backgroundColor: '#bbdefb',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    transform: 'translateY(-2px)'
   },
+  transition: 'all 0.3s ease'
 }));
 
 function App() {
@@ -134,8 +143,19 @@ function App() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h3" component="h1" gutterBottom align="center" sx={{ mb: 4, color: '#1a237e' }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
+      <Typography 
+        variant="h3" 
+        component="h1" 
+        align="center" 
+        sx={{ 
+          mb: { xs: 2, md: 4 }, 
+          color: 'rgba(255, 255, 255, 0.87)',
+          fontSize: { xs: '2rem', md: '3rem' },
+          fontWeight: 600,
+          textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
+        }}
+      >
         Grail Meter
       </Typography>
 
@@ -143,66 +163,88 @@ function App() {
         <Grid container spacing={2} justifyContent="center">
           <Grid item xs={12} md={6}>
             <StyledPaper>
-              <DropzoneArea
-                acceptedFiles={['image/*']}
-                dropzoneText="Drag and drop an image here or click"
-                onChange={handleImageChange}
-                maxFileSize={5000000}
-                showFileNames
-                showPreviewsInDropzone={false}
-                useChipsForPreview
-              />
+              <div className="glass-card">
+                <DropzoneArea
+                  acceptedFiles={['image/*']}
+                  dropzoneText="Drag and drop an image here or click"
+                  onChange={handleImageChange}
+                  maxFileSize={5000000}
+                  showFileNames
+                  showPreviewsInDropzone={false}
+                  useChipsForPreview
+                  classes={{
+                    root: 'dropzone-root',
+                    text: 'dropzone-text'
+                  }}
+                />
+              </div>
             </StyledPaper>
           </Grid>
           <Grid item xs={12} md={6}>
-            <StyledPaper sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
-              <Button
-                variant="contained"
-                startIcon={<CameraAltIcon />}
-                onClick={startCamera}
-                sx={{ fontSize: '1.2rem', py: 2, px: 4 }}
-              >
-                Take Photo
-              </Button>
+            <StyledPaper>
+              <div className="glass-card" style={{ justifyContent: 'center', alignItems: 'center' }}>
+                <Button
+                  variant="contained"
+                  startIcon={<CameraAltIcon />}
+                  onClick={startCamera}
+                  sx={{
+                    fontSize: { xs: '1rem', md: '1.2rem' },
+                    py: 2,
+                    px: 4,
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    '&:hover': {
+                      background: 'rgba(255, 255, 255, 0.2)',
+                      transform: 'translateY(-2px)'
+                    },
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  Take Photo
+                </Button>
+              </div>
             </StyledPaper>
           </Grid>
         </Grid>
       )}
 
       {showCamera && (
-        <StyledPaper sx={{ position: 'relative', mb: 2 }}>
-          <IconButton
-            onClick={stopCamera}
-            sx={{ position: 'absolute', top: 8, right: 8, zIndex: 2 }}
-          >
-            <CloseIcon />
-          </IconButton>
-          <Box sx={{ position: 'relative', width: '100%', height: '500px' }}>
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-            />
-            <Button
-              variant="contained"
-              onClick={captureImage}
-              sx={{ position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)' }}
-            >
-              Capture
-            </Button>
-          </Box>
+        <StyledPaper sx={{ mb: 2 }}>
+          <div className="glass-card">
+            <div className="camera-container">
+              <IconButton
+                onClick={stopCamera}
+                className="camera-close"
+              >
+                <CloseIcon />
+              </IconButton>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+              <Button
+                variant="contained"
+                onClick={captureImage}
+                className="camera-button"
+              >
+                Capture
+              </Button>
+            </div>
+          </div>
         </StyledPaper>
       )}
 
       {loading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress />
+          <CircularProgress sx={{ color: 'rgba(255, 255, 255, 0.87)' }} />
         </Box>
       )}
 
       {error && (
-        <Typography color="error" align="center" sx={{ my: 2 }}>
+        <Typography color="error" align="center" sx={{ my: 2 }} className="error-message">
           {error}
         </Typography>
       )}
@@ -211,100 +253,104 @@ function App() {
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <StyledPaper>
-              <ImageContainer>
-                {imageUrl && <img src={imageUrl} alt="Selected item" />}
-              </ImageContainer>
+              <div className="glass-card">
+                <ImageContainer>
+                  {imageUrl && <img src={imageUrl} alt="Selected item" />}
+                </ImageContainer>
+              </div>
             </StyledPaper>
           </Grid>
           <Grid item xs={12} md={6}>
             <StyledPaper>
-              <Typography variant="h5" gutterBottom>
-                Analysis Results
-              </Typography>
-              
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h6" color="primary">
-                  {analysisResult.product.title}
+              <div className="glass-card">
+                <Typography variant="h5" gutterBottom sx={{ color: 'rgba(255, 255, 255, 0.87)' }}>
+                  Analysis Results
                 </Typography>
-                <Typography variant="subtitle1">
-                  Condition: {analysisResult.seo.condition}/10
-                </Typography>
-              </Box>
-
-              {analysisResult.product.details && (
+                
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6">Details</Typography>
-                  <Typography variant="body1">
-                    <strong>Materials:</strong> {analysisResult.product.details.materials}
+                  <Typography variant="h6" sx={{ color: '#90caf9' }}>
+                    {analysisResult.product.title}
                   </Typography>
-                  <Typography variant="body1">
-                    <strong>Colors:</strong> {analysisResult.product.details.colorway}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>Style:</strong> {analysisResult.product.details.style}
-                  </Typography>
-                  {analysisResult.product.details.notable_features && (
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="body1">
-                        <strong>Notable Features:</strong>
-                      </Typography>
-                      <ul style={{ marginTop: 4 }}>
-                        {Array.isArray(analysisResult.product.details.notable_features) 
-                          ? analysisResult.product.details.notable_features.map((feature, index) => (
-                            <li key={index}>{feature}</li>
-                          ))
-                          : <li>{analysisResult.product.details.notable_features}</li>
-                        }
-                      </ul>
-                    </Box>
-                  )}
-                </Box>
-              )}
-
-              {analysisResult.product.estimated_retail_range && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6">Estimated Retail Range</Typography>
-                  <Typography variant="body1">
-                    ${analysisResult.product.estimated_retail_range.min} - ${analysisResult.product.estimated_retail_range.max}
+                  <Typography variant="subtitle1" sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>
+                    Condition: {analysisResult.seo.condition}/10
                   </Typography>
                 </Box>
-              )}
 
-              {analysisResult.product.authenticity_indicators && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6">Authenticity Indicators</Typography>
-                  <ul style={{ marginTop: 4 }}>
-                    {Array.isArray(analysisResult.product.authenticity_indicators) 
-                      ? analysisResult.product.authenticity_indicators.map((indicator, index) => (
-                        <li key={index}>{indicator}</li>
-                      ))
-                      : <li>{analysisResult.product.authenticity_indicators}</li>
-                    }
-                  </ul>
-                </Box>
-              )}
-
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h6">Keywords</Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {analysisResult.seo.primary_keywords && analysisResult.seo.primary_keywords.map((keyword, index) => (
-                    <KeywordChip key={index} label={keyword} />
-                  ))}
-                </Box>
-              </Box>
-
-              {analysisResult.error && (
-                <Box sx={{ mt: 2, p: 2, bgcolor: '#ffebee', borderRadius: 1 }}>
-                  <Typography color="error">
-                    Error: {analysisResult.error}
-                  </Typography>
-                  {analysisResult.product?.details?.error_type && (
-                    <Typography variant="caption" color="error">
-                      Type: {analysisResult.product.details.error_type}
+                {analysisResult.product.details && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="h6">Details</Typography>
+                    <Typography variant="body1">
+                      <strong>Materials:</strong> {analysisResult.product.details.materials}
                     </Typography>
-                  )}
+                    <Typography variant="body1">
+                      <strong>Colors:</strong> {analysisResult.product.details.colorway}
+                    </Typography>
+                    <Typography variant="body1">
+                      <strong>Style:</strong> {analysisResult.product.details.style}
+                    </Typography>
+                    {analysisResult.product.details.notable_features && (
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="body1">
+                          <strong>Notable Features:</strong>
+                        </Typography>
+                        <ul style={{ marginTop: 4 }}>
+                          {Array.isArray(analysisResult.product.details.notable_features) 
+                            ? analysisResult.product.details.notable_features.map((feature, index) => (
+                              <li key={index}>{feature}</li>
+                            ))
+                            : <li>{analysisResult.product.details.notable_features}</li>
+                          }
+                        </ul>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+
+                {analysisResult.product.estimated_retail_range && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="h6">Estimated Retail Range</Typography>
+                    <Typography variant="body1">
+                      ${analysisResult.product.estimated_retail_range.min} - ${analysisResult.product.estimated_retail_range.max}
+                    </Typography>
+                  </Box>
+                )}
+
+                {analysisResult.product.authenticity_indicators && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="h6">Authenticity Indicators</Typography>
+                    <ul style={{ marginTop: 4 }}>
+                      {Array.isArray(analysisResult.product.authenticity_indicators) 
+                        ? analysisResult.product.authenticity_indicators.map((indicator, index) => (
+                          <li key={index}>{indicator}</li>
+                        ))
+                        : <li>{analysisResult.product.authenticity_indicators}</li>
+                      }
+                    </ul>
+                  </Box>
+                )}
+
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6">Keywords</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {analysisResult.seo.primary_keywords && analysisResult.seo.primary_keywords.map((keyword, index) => (
+                      <KeywordChip key={index} label={keyword} />
+                    ))}
+                  </Box>
                 </Box>
-              )}
+
+                {analysisResult.error && (
+                  <Box sx={{ mt: 2, p: 2, bgcolor: '#ffebee', borderRadius: 1 }}>
+                    <Typography color="error">
+                      Error: {analysisResult.error}
+                    </Typography>
+                    {analysisResult.product?.details?.error_type && (
+                      <Typography variant="caption" color="error">
+                        Type: {analysisResult.product.details.error_type}
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </div>
             </StyledPaper>
           </Grid>
         </Grid>
