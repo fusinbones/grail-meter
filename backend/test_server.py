@@ -298,11 +298,11 @@ def get_trend_data(search_term):
 
         # Use rotating proxy with authentication
         proxy_host = "usa.rotating.proxyrack.net"
-        proxy_port = "10000"  # We'll use the first port, they're all equivalent
+        proxy_port = "10100"  # Try a different port
         proxy_auth = "mcherchSUH5TDY-APM77K0-K703SNY-JIMAOKI-YIEAGRU-LVFTB2M-ZJOG99K"
         
         # Format the proxy URL with the auth token as the username
-        proxy_url = f"http://{proxy_auth}:@{proxy_host}:{proxy_port}"
+        proxy_url = f"http://{proxy_auth}@{proxy_host}:{proxy_port}"
         
         # Configure proxy with authentication
         proxy_config = {
@@ -310,23 +310,51 @@ def get_trend_data(search_term):
             'https': proxy_url
         }
         
+        # Custom headers to mimic a real browser
+        custom_headers.update({
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'max-age=0',
+        })
+        
         log_info(f"[PyTrends] Using rotating proxy: {proxy_host}:{proxy_port}")
         
-        # Test proxy connection before using it
-        try:
-            log_info("[PyTrends] Testing proxy connection...")
-            session = requests.Session()
-            session.proxies = proxy_config
-            session.headers.update(custom_headers)
-            
-            test_response = session.get('http://trends.google.com', 
-                                     timeout=10,
-                                     allow_redirects=True)
-            log_info(f"[PyTrends] Proxy test status code: {test_response.status_code}")
-            log_info(f"[PyTrends] Proxy test URL after redirects: {test_response.url}")
-        except Exception as e:
-            log_error("[PyTrends] Proxy test failed", e)
-            raise
+        # Test proxy connection with retries
+        max_retries = 3
+        retry_ports = [10100, 10150, 10200]  # Try different ports if one fails
+        
+        for attempt, port in enumerate(retry_ports, 1):
+            try:
+                if attempt > 1:
+                    proxy_url = f"http://{proxy_auth}@{proxy_host}:{port}"
+                    proxy_config = {'http': proxy_url, 'https': proxy_url}
+                    log_info(f"[PyTrends] Retry {attempt} with port {port}")
+                
+                log_info("[PyTrends] Testing proxy connection...")
+                session = requests.Session()
+                session.proxies = proxy_config
+                session.headers.update(custom_headers)
+                session.verify = True
+                
+                test_response = session.get('https://trends.google.com/trends/explore', 
+                                         timeout=15,
+                                         allow_redirects=True)
+                
+                if test_response.status_code == 200:
+                    log_info(f"[PyTrends] Proxy test successful with port {port}")
+                    log_info(f"[PyTrends] Status code: {test_response.status_code}")
+                    break
+                else:
+                    log_info(f"[PyTrends] Proxy test failed with status {test_response.status_code}")
+                    if attempt == len(retry_ports):
+                        raise Exception(f"All proxy attempts failed. Last status: {test_response.status_code}")
+                    
+            except Exception as e:
+                log_error(f"[PyTrends] Proxy test attempt {attempt} failed", e)
+                if attempt == len(retry_ports):
+                    raise
 
         try:
             # Initialize PyTrends with proxy settings
@@ -334,7 +362,7 @@ def get_trend_data(search_term):
             pytrends = TrendReq(
                 hl='en-US',
                 tz=360,
-                timeout=(30,30),
+                timeout=(15,15),
                 retries=2,
                 backoff_factor=1.5,
                 requests_args={
