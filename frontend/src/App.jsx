@@ -246,117 +246,86 @@ function App() {
         </Box>
       )}
 
-      {error && (
-        <Typography color="error" align="center" sx={{ my: 2 }} className="error-message">
-          {error}
-        </Typography>
-      )}
-
-      {analysisResult && !loading && (
+      {selectedImage && !loading && analysisResult && (
         <Grid container spacing={3}>
+          {/* Image Preview */}
           <Grid item xs={12} md={6}>
             <StyledPaper>
               <div className="glass-card">
                 <ImageContainer>
-                  {imageUrl && <img src={imageUrl} alt="Selected item" />}
+                  <img src={imageUrl} alt="Selected" />
                 </ImageContainer>
               </div>
             </StyledPaper>
           </Grid>
+
+          {/* Product Details */}
           <Grid item xs={12} md={6}>
             <StyledPaper>
               <div className="glass-card">
-                <Typography variant="h5" gutterBottom sx={{ color: '#4A4C58' }}>
-                  Analysis Results
+                <Typography variant="h5" sx={{ color: '#4A4C58', mb: 1, fontWeight: 600 }}>
+                  {analysisResult.product.title}
                 </Typography>
-                
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6" sx={{ color: '#6C5CE7' }}>
-                    {analysisResult.product.title}
+                  <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
+                    <strong>Color:</strong> {analysisResult.product.color}
                   </Typography>
-                  <Typography variant="subtitle1" sx={{ color: '#4A4C58' }}>
-                    Condition: {analysisResult.seo.condition}/10
+                  <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
+                    <strong>Category:</strong> {analysisResult.product.category}
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
+                    <strong>Gender:</strong> {analysisResult.product.gender}
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
+                    <strong>Size:</strong> {analysisResult.product.size}
                   </Typography>
                 </Box>
+                <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
+                  <strong>Material:</strong> {analysisResult.product.material}
+                </Typography>
+              </div>
+            </StyledPaper>
+          </Grid>
 
-                {analysisResult.product.details && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6">Details</Typography>
-                    <Typography variant="body1">
-                      <strong>Materials:</strong> {analysisResult.product.details.materials}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Colors:</strong> {analysisResult.product.details.colorway}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Style:</strong> {analysisResult.product.details.style}
-                    </Typography>
-                    {analysisResult.product.details.notable_features && (
-                      <Box sx={{ mt: 1 }}>
-                        <Typography variant="body1">
-                          <strong>Notable Features:</strong>
-                        </Typography>
-                        <ul style={{ marginTop: 4 }}>
-                          {Array.isArray(analysisResult.product.details.notable_features) 
-                            ? analysisResult.product.details.notable_features.map((feature, index) => (
-                              <li key={index}>{feature}</li>
-                            ))
-                            : <li>{analysisResult.product.details.notable_features}</li>
-                          }
-                        </ul>
-                      </Box>
-                    )}
-                  </Box>
-                )}
-
-                {analysisResult.product.estimated_retail_range && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6">Estimated Retail Range</Typography>
-                    <Typography variant="body1">
-                      ${analysisResult.product.estimated_retail_range.min} - ${analysisResult.product.estimated_retail_range.max}
-                    </Typography>
-                  </Box>
-                )}
-
-                {analysisResult.product.authenticity_indicators && (
-                  <Box sx={{ mb: 2 }}>
-                    <Typography variant="h6">Authenticity Indicators</Typography>
-                    <ul style={{ marginTop: 4 }}>
-                      {Array.isArray(analysisResult.product.authenticity_indicators) 
-                        ? analysisResult.product.authenticity_indicators.map((indicator, index) => (
-                          <li key={index}>{indicator}</li>
-                        ))
-                        : <li>{analysisResult.product.authenticity_indicators}</li>
-                      }
-                    </ul>
-                  </Box>
-                )}
-
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="h6">Keywords</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {analysisResult.seo.primary_keywords && analysisResult.seo.primary_keywords.map((keyword, index) => (
-                      <KeywordChip key={index} label={keyword} />
-                    ))}
-                  </Box>
+          {/* Keywords */}
+          <Grid item xs={12} md={6}>
+            <StyledPaper>
+              <div className="glass-card">
+                <Typography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
+                  Top 5 Keywords for Listings
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {analysisResult.keywords.slice(0, 5).map((keyword, index) => (
+                    <KeywordChip key={index} label={keyword} />
+                  ))}
                 </Box>
+              </div>
+            </StyledPaper>
+          </Grid>
 
-                {analysisResult.error && (
-                  <Box sx={{ mt: 2, p: 2, bgcolor: '#ffebee', borderRadius: 1 }}>
-                    <Typography color="error">
-                      Error: {analysisResult.error}
-                    </Typography>
-                    {analysisResult.product?.details?.error_type && (
-                      <Typography variant="caption" color="error">
-                        Type: {analysisResult.product.details.error_type}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
+          {/* Keyword Research Coming Soon */}
+          <Grid item xs={12} md={6}>
+            <StyledPaper>
+              <div className="glass-card" style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                minHeight: '150px',
+                backgroundColor: '#F8F9FD'
+              }}>
+                <Typography variant="h6" sx={{ color: '#6C5CE7', fontWeight: 500, opacity: 0.8 }}>
+                  Keyword Research Feature Coming Soon
+                </Typography>
               </div>
             </StyledPaper>
           </Grid>
         </Grid>
+      )}
+
+      {error && (
+        <Typography color="error" align="center" sx={{ mt: 2 }}>
+          {error}
+        </Typography>
       )}
     </Container>
   );

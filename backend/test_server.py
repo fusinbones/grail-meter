@@ -19,6 +19,9 @@ import signal
 import sys
 import random
 import asyncio
+from transformers import BlipProcessor, BlipForConditionalGeneration
+import torch
+from openai import openai
 
 # Load environment variables
 load_dotenv()
@@ -358,6 +361,105 @@ def get_top_keywords(keywords: List[str], count: int) -> List[str]:
     
     sorted_keywords = sorted(keywords, key=keyword_priority, reverse=True)
     return sorted_keywords[:count]
+
+def analyze_images(image_path):
+    try:
+        # Initialize the image captioning model
+        processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+        model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+        
+        # Load and process the image
+        raw_image = Image.open(image_path).convert('RGB')
+        inputs = processor(raw_image, return_tensors="pt")
+        
+        # Generate caption
+        out = model.generate(**inputs)
+        caption = processor.decode(out[0], skip_special_tokens=True)
+        
+        # Extract product details
+        product_info = extract_product_details(caption)
+        
+        # Generate keywords
+        keywords = generate_keywords(caption, product_info)
+        
+        return {
+            "product": {
+                "title": product_info["title"],
+                "color": product_info["color"],
+                "category": product_info["category"],
+                "gender": product_info["gender"],
+                "size": product_info["size"],
+                "material": product_info["material"]
+            },
+            "keywords": keywords,
+            "seo": {
+                "condition": random.randint(7, 10)  # Placeholder for condition rating
+            }
+        }
+    except Exception as e:
+        print(f"Error in analyze_images: {str(e)}")
+        raise
+
+def extract_product_details(caption):
+    # Use GPT to extract specific product details
+    prompt = f"""
+    Extract specific product details from this caption: "{caption}"
+    Provide a very specific and accurate title, color, category, gender, size, and material.
+    Format the response as a JSON object with these exact keys:
+    {{
+        "title": "specific product name",
+        "color": "main color",
+        "category": "product category",
+        "gender": "Men/Women/Unisex",
+        "size": "size if applicable",
+        "material": "main material"
+    }}
+    Be very specific with the title, like "Red MAGA Hat" for a Make America Great Again hat.
+    """
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        print(f"Error in extract_product_details: {str(e)}")
+        return {
+            "title": "Unknown Product",
+            "color": "Not specified",
+            "category": "Unknown",
+            "gender": "Unisex",
+            "size": "N/A",
+            "material": "Not specified"
+        }
+
+def generate_keywords(caption, product_info):
+    prompt = f"""
+    Generate the top 5 most effective keywords for selling this product online:
+    Caption: {caption}
+    Product: {product_info['title']}
+    
+    Consider:
+    1. Specific product name
+    2. Brand or style
+    3. Material
+    4. Color
+    5. Category
+    
+    Return only the 5 keywords as a JSON array.
+    """
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        keywords = json.loads(response.choices[0].message.content)
+        return keywords[:5]  # Ensure we only return 5 keywords
+    except Exception as e:
+        print(f"Error in generate_keywords: {str(e)}")
+        return ["vintage", "rare", "authentic", "collectible", "unique"]
 
 @app.post("/analyze")
 async def analyze_image_endpoint(file: UploadFile):
