@@ -186,6 +186,15 @@ function App() {
     }
   };
 
+  const isValidEbayUrl = (url) => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname === 'www.ebay.com' && urlObj.pathname.startsWith('/itm/');
+    } catch {
+      return false;
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
       <ResponsiveTypography 
@@ -364,30 +373,46 @@ function App() {
                       }
                     }}
                   >
-                    <Link 
-                      href={listing.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      sx={{ 
-                        textDecoration: 'none',
-                        color: 'inherit',
-                        '&:hover': {
-                          textDecoration: 'underline'
-                        }
-                      }}
-                    >
-                      <ResponsiveTypography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                        {listing.title}
-                      </ResponsiveTypography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, flexWrap: 'wrap', gap: 1 }}>
-                        <ResponsiveTypography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                          ${listing.price}
+                    {isValidEbayUrl(listing.url) ? (
+                      <Link 
+                        href={listing.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        sx={{ 
+                          textDecoration: 'none',
+                          color: 'inherit',
+                          '&:hover': {
+                            textDecoration: 'underline'
+                          }
+                        }}
+                      >
+                        <ResponsiveTypography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                          {listing.title}
                         </ResponsiveTypography>
-                        <ResponsiveTypography variant="body2" color="text.secondary">
-                          {listing.condition}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, flexWrap: 'wrap', gap: 1 }}>
+                          <ResponsiveTypography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
+                            ${listing.price}
+                          </ResponsiveTypography>
+                          <ResponsiveTypography variant="body2" color="text.secondary">
+                            {listing.condition}
+                          </ResponsiveTypography>
+                        </Box>
+                      </Link>
+                    ) : (
+                      <Box>
+                        <ResponsiveTypography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                          {listing.title}
                         </ResponsiveTypography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, flexWrap: 'wrap', gap: 1 }}>
+                          <ResponsiveTypography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
+                            ${listing.price}
+                          </ResponsiveTypography>
+                          <ResponsiveTypography variant="body2" color="text.secondary">
+                            {listing.condition}
+                          </ResponsiveTypography>
+                        </Box>
                       </Box>
-                    </Link>
+                    )}
                   </Box>
                 ))}
                 {analysisResult.averagePrice > 0 && (

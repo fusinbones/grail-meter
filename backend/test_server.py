@@ -428,6 +428,8 @@ def analyze_images(image_path):
         3. Calculate the exact average of the prices
         4. Only include listings that are very similar to the analyzed item
         5. Format prices as numbers (e.g., 149.99)
+        6. Make sure URLs are complete and start with https://www.ebay.com/itm/
+        7. Double check that all URLs are valid eBay listing URLs
         
         Provide ONLY valid JSON, no additional text."""
         
