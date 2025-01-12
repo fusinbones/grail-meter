@@ -247,52 +247,94 @@ async def get_trend_data(search_term: str) -> List[Dict[str, Any]]:
     try:
         log_info(f"[PyTrends] Starting trend data fetch for: {search_term}")
         
-        # Create shorter search terms for better results
-        terms = [search_term]
+        # Create search terms from specific to broad
+        terms = []
         words = search_term.split()
-        if len(words) > 2:
-            terms.append(' '.join(words[-2:]))  # Last two words
-            terms.append(words[-1])  # Last word
+        
+        # Original term
+        terms.append(search_term)
+        
+        # Try without brand name if it's a multi-word term
+        if len(words) > 1:
+            terms.append(words[-1])  # Just the item type (e.g., "hoodie")
+            
+        # Add category term
+        category_term = None
+        if 'hoodie' in search_term.lower():
+            category_term = 'hoodie fashion'
+        elif 'jacket' in search_term.lower():
+            category_term = 'jacket fashion'
+        elif 'shirt' in search_term.lower():
+            category_term = 'shirt fashion'
+        elif 'pants' in search_term.lower():
+            category_term = 'pants fashion'
+        
+        if category_term:
+            terms.append(category_term)
         
         log_info(f"[PyTrends] Search terms from specific to broad: {terms}")
         
         pytrends = TrendReq(hl='en-US', tz=360, timeout=(3.0, 10.0))
-        pytrends.build_payload(
-            terms,
-            cat=0,
-            timeframe='today 12-m',
-            geo='',
-            gprop=''
-        )
         
-        # Get interest over time data
-        trend_data = pytrends.interest_over_time()
-        
-        if trend_data.empty:
-            log_info("[PyTrends] No trend data found, trying with simpler term")
-            # Try with simpler term if no data found
-            if len(terms) > 1:
+        # Try each term until we get data
+        for term in terms:
+            try:
+                # Fashion & Style category ID: 185
                 pytrends.build_payload(
-                    [terms[1]],
-                    cat=0,
+                    [term],
+                    cat=185,  # Fashion & Style category
                     timeframe='today 12-m',
                     geo='',
                     gprop=''
                 )
+                
                 trend_data = pytrends.interest_over_time()
+                
+                if not trend_data.empty:
+                    # Convert to list of dictionaries
+                    result = []
+                    for date, row in trend_data.iterrows():
+                        result.append({
+                            'date': date.strftime('%Y-%m-%d'),
+                            'volume': int(row[term])
+                        })
+                    
+                    # Check if we have any non-zero values
+                    if any(item['volume'] > 0 for item in result):
+                        log_info(f"[PyTrends] Found data for term: {term}")
+                        return result
+                    
+                log_info(f"[PyTrends] No data found for term: {term}")
+                
+            except Exception as e:
+                log_error(f"[PyTrends] Error fetching data for term '{term}'", e)
+                continue
         
-        if trend_data.empty:
-            return []
+        # If we get here, try one last time with a very broad fashion term
+        try:
+            pytrends.build_payload(
+                ['fashion trends'],
+                cat=185,
+                timeframe='today 12-m',
+                geo='',
+                gprop=''
+            )
             
-        # Convert to list of dictionaries
-        result = []
-        for date, row in trend_data.iterrows():
-            result.append({
-                'date': date.strftime('%Y-%m-%d'),
-                'volume': int(row[terms[0]])
-            })
+            trend_data = pytrends.interest_over_time()
             
-        return result
+            if not trend_data.empty:
+                result = []
+                for date, row in trend_data.iterrows():
+                    result.append({
+                        'date': date.strftime('%Y-%m-%d'),
+                        'volume': int(row['fashion trends'])
+                    })
+                return result
+                
+        except Exception as e:
+            log_error("[PyTrends] Error fetching fallback data", e)
+            
+        return []
         
     except Exception as e:
         log_error("[PyTrends] Error fetching trend data", e)
