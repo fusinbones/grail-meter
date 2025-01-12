@@ -374,54 +374,42 @@ def analyze_images(image_path):
         # Extract basic image info
         log_info("Processing image...")
         img = Image.open(image_path)
-        width, height = img.size
-        format_type = img.format
-        mode = img.mode
         
-        # Generate a basic description based on image properties
-        description = f"Image of size {width}x{height} in {format_type} format"
-        log_info(f"Generated description: {description}")
+        # Use Gemini for image analysis
+        model = genai.GenerativeModel('gemini-1.5-flash')
         
-        # Extract product details using GPT
-        log_info("Extracting product details...")
-        product_info = {
-            "title": "Armani Exchange Zip-up Hoodie",
-            "color": "Grey and Black",
-            "category": "Hoodie",
-            "gender": "Men",
-            "size": "Regular",
-            "material": "Cotton Blend"
+        prompt = """Analyze this streetwear/fashion item and provide details in this exact format:
+        {
+            "product": {
+                "title": "Specific product name with brand if visible",
+                "color": "Main colors",
+                "category": "Type of clothing (e.g., hoodie, t-shirt, sneakers)",
+                "gender": "Men/Women/Unisex",
+                "size": "Size if visible, otherwise 'Regular'",
+                "material": "Main material if visible"
+            },
+            "keywords": [
+                "5 most relevant keywords for marketplace listings"
+            ],
+            "longTailKeywords": [
+                "5 detailed search phrases that combine brand, style, and features"
+            ]
         }
-        log_info(f"Product details: {json.dumps(product_info, indent=2)}")
+        Provide ONLY valid JSON, no additional text."""
         
-        # Generate keywords
-        keywords = [
-            "Armani Exchange",
-            "Designer Hoodie",
-            "Grey Black",
-            "Zip-up",
-            "Streetwear"
-        ]
+        log_info("Sending request to Gemini API...")
+        response = model.generate_content([prompt, img])
         
-        # Generate long-tail keywords
-        long_tail_keywords = [
-            "Armani Exchange Men's Grey Zip Hoodie",
-            "Authentic AX Designer Sweatshirt Black",
-            "Armani Exchange Casual Streetwear Hoodie",
-            "AX Two Tone Zip Up Jacket Grey Black",
-            "Armani Exchange Premium Cotton Blend Hoodie"
-        ]
+        if not response or not response.text:
+            raise Exception("Empty response from Gemini API")
+            
+        # Clean and parse the response
+        cleaned_json = clean_json_string(response.text)
+        result = json.loads(cleaned_json)
         
-        log_info(f"Generated keywords: {keywords}")
-        log_info(f"Generated long-tail keywords: {long_tail_keywords}")
-        
-        result = {
-            "product": product_info,
-            "keywords": keywords,
-            "longTailKeywords": long_tail_keywords,
-            "seo": {
-                "condition": 9  # High quality condition
-            }
+        # Add SEO score
+        result["seo"] = {
+            "condition": random.randint(7, 10)  # Placeholder for condition rating
         }
         
         log_info(f"Final result: {json.dumps(result, indent=2)}")
