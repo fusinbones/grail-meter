@@ -301,8 +301,10 @@ def get_trend_data(search_term):
         proxy_port = "10000"  # We'll use the first port, they're all equivalent
         proxy_auth = "mcherchSUH5TDY-APM77K0-K703SNY-JIMAOKI-YIEAGRU-LVFTB2M-ZJOG99K"
         
-        # Format: hostname:port:username:password
-        proxy_url = f"http://{proxy_auth}@{proxy_host}:{proxy_port}"
+        # Format the proxy URL with the auth token as the username
+        proxy_url = f"http://{proxy_auth}:@{proxy_host}:{proxy_port}"
+        
+        # Configure proxy with authentication
         proxy_config = {
             'http': proxy_url,
             'https': proxy_url
@@ -313,11 +315,13 @@ def get_trend_data(search_term):
         # Test proxy connection before using it
         try:
             log_info("[PyTrends] Testing proxy connection...")
-            test_response = requests.get('http://trends.google.com', 
-                                      proxies=proxy_config, 
-                                      timeout=10,
-                                      headers=custom_headers,
-                                      allow_redirects=True)
+            session = requests.Session()
+            session.proxies = proxy_config
+            session.headers.update(custom_headers)
+            
+            test_response = session.get('http://trends.google.com', 
+                                     timeout=10,
+                                     allow_redirects=True)
             log_info(f"[PyTrends] Proxy test status code: {test_response.status_code}")
             log_info(f"[PyTrends] Proxy test URL after redirects: {test_response.url}")
         except Exception as e:
@@ -334,7 +338,7 @@ def get_trend_data(search_term):
                 retries=2,
                 backoff_factor=1.5,
                 requests_args={
-                    'verify': True,  # Enable SSL verification since we're using a trusted proxy
+                    'verify': True,
                     'headers': custom_headers,
                     'allow_redirects': True,
                     'proxies': proxy_config
