@@ -52,23 +52,13 @@ def log_info(message: str):
 # Initialize FastAPI app
 app = FastAPI()
 
-# Configure CORS
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",    # Frontend URL
-        "http://localhost:8000",    # Backend URL
-        "http://127.0.0.1:8000",    # Backend URL alternative
-        "http://127.0.0.1:3000",    # Frontend URL alternative
-        "https://grail-meter.vercel.app",  # Production frontend
-        "https://grail-meter-production.up.railway.app",  # Production backend
-        "*"  # Allow all origins temporarily for debugging
-    ],
+    allow_origins=["https://grail-meter.vercel.app"],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Explicitly list allowed methods
-    allow_headers=["*"],  # Allows all headers
-    expose_headers=["*"],  # Expose all headers
-    max_age=3600,  # Cache preflight requests for 1 hour
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Load environment variables
@@ -351,55 +341,45 @@ def get_trend_data(search_term):
         # Try each term until we get data
         for term in terms:
             try:
-                log_info(f"[PyTrends] Trying search term: {term}")
+                log_info(f"[PyTrends] Attempting to build payload for term: {term}")
+                pytrends.build_payload([term], timeframe='today 12-m')
+                log_info("[PyTrends] Successfully built payload")
                 
-                # Add a small delay between requests
-                import time
-                time.sleep(1.5)
+                log_info("[PyTrends] Fetching interest over time...")
+                interest_over_time_df = pytrends.interest_over_time()
                 
-                try:
-                    log_info(f"[PyTrends] Building payload for term: {term}")
-                    pytrends.build_payload(
-                        kw_list=[term],
-                        cat=0,
-                        timeframe='today 12-m',
-                        geo='US'
-                    )
-                    log_info("[PyTrends] Payload built successfully")
-                except Exception as e:
-                    log_error("[PyTrends] Failed to build payload", e)
-                    continue
-                
-                # Get interest over time
-                try:
-                    log_info("[PyTrends] Fetching interest over time data...")
-                    interest_df = pytrends.interest_over_time()
-                    log_info("[PyTrends] Successfully fetched interest over time data")
-                except Exception as e:
-                    log_error("[PyTrends] Failed to fetch interest over time data", e)
-                    continue
-                
-                if interest_df is not None and not interest_df.empty:
-                    log_info(f"[PyTrends] Found data for term: {term}")
-                    trend_data = [{
-                        'date': date.strftime('%Y-%m-%d'),
-                        'volume': int(row[term])
-                    } for date, row in interest_df.iterrows() 
-                    if term in row and pd.notna(row[term])]
+                if not interest_over_time_df.empty:
+                    log_info(f"[PyTrends] Got interest over time data with shape: {interest_over_time_df.shape}")
                     
-                    # Add delay before getting related queries
-                    time.sleep(1.5)
+                    # Process trend data
+                    trend_data = []
+                    for index, row in interest_over_time_df.iterrows():
+                        try:
+                            trend_data.append({
+                                'date': index.strftime('%Y-%m-%d'),
+                                'value': int(row[term])
+                            })
+                        except Exception as e:
+                            log_error(f"[PyTrends] Error processing trend point: {e}")
+                            continue
                     
-                    try:
-                        # Get related queries
-                        log_info("[PyTrends] Fetching related queries...")
-                        related = pytrends.related_queries()
-                        log_info("[PyTrends] Successfully fetched related queries")
-                        keywords_data = []
-                        if related and term in related:
-                            top_df = related[term].get('top')
+                    log_info(f"[PyTrends] Processed {len(trend_data)} trend points")
+                    
+                    # Get related queries
+                    log_info("[PyTrends] Fetching related queries...")
+                    related = pytrends.related_queries()
+                    log_info(f"[PyTrends] Got related queries response: {type(related)}")
+                    
+                    keywords_data = []
+                    if related:
+                        log_info(f"[PyTrends] Found related queries for terms: {list(related.keys())}")
+                        if term in related:
+                            term_data = related[term]
+                            log_info(f"[PyTrends] Term data types: {[k + ': ' + str(type(v)) for k, v in term_data.items() if v is not None]}")
+                            
+                            top_df = term_data.get('top')
                             if isinstance(top_df, pd.DataFrame) and not top_df.empty:
-                                # Convert to our keyword format
+                                log_info(f"[PyTrends] Processing top queries DataFrame with shape: {top_df.shape}")
                                 for _, row in top_df.iterrows():
                                     try:
                                         keywords_data.append({
@@ -407,26 +387,20 @@ def get_trend_data(search_term):
                                             'volume': int(row['value'])
                                         })
                                     except (ValueError, KeyError, TypeError) as e:
-                                        log_error(f"Error processing keyword: {e}")
+                                        log_error(f"[PyTrends] Error processing keyword row: {e}")
                                         continue
-                        
-                        log_info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
-                        return {
-                            'trend_data': trend_data,
-                            'keywords_data': keywords_data
-                        }
-                    except Exception as e:
-                        log_error("[PyTrends] Failed to fetch related queries", e)
-                        return {
-                            'trend_data': trend_data,
-                            'keywords_data': []
-                        }
+                    
+                    log_info(f"[PyTrends] Successfully processed {len(keywords_data)} keywords")
+                    return {
+                        'trend_data': trend_data,
+                        'keywords_data': keywords_data
+                    }
                 else:
-                    log_info(f"[PyTrends] No data found for term: {term}")
+                    log_info(f"[PyTrends] No interest over time data for term: {term}")
                     continue
                     
             except Exception as e:
-                log_error(f"[PyTrends] Error with term {term}", e)
+                log_error(f"[PyTrends] Error processing term '{term}'", e)
                 continue
         
         # If we get here, no terms worked
