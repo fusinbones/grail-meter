@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
 import logging
 import os
 import tempfile
@@ -13,6 +14,14 @@ from typing import Dict, List, Optional
 import json
 import requests
 from datetime import datetime, timedelta
+import re
+from bs4 import BeautifulSoup
+import psutil
+import signal
+import sys
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -52,9 +61,6 @@ app.add_middleware(
     expose_headers=["*"],
     max_age=3600,
 )
-
-# Load environment variables
-load_dotenv()
 
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
