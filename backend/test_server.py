@@ -127,9 +127,7 @@ def clean_json_string(json_str: str) -> str:
             })
 
 def analyze_with_gemini(image_path: str) -> str:
-    """
-    Analyze an image using Google's Gemini Vision model.
-    """
+    """Analyze an image with Gemini Vision API."""
     try:
         if not GEMINI_API_KEY:
             raise Exception("GEMINI_API_KEY not configured")
@@ -138,7 +136,7 @@ def analyze_with_gemini(image_path: str) -> str:
         
         try:
             # Load and verify the image
-            img = PIL.Image.open(image_path)
+            img = Image.open(image_path)
             log_info(f"Image loaded successfully: size={img.size}, mode={img.mode}")
             
             # Convert image to RGB if needed
@@ -152,11 +150,10 @@ def analyze_with_gemini(image_path: str) -> str:
             
             # Prepare the prompt
             prompt = """Analyze this image and provide a JSON response with the following fields:
-            - brand (string): The brand name visible in the image, or best guess based on style
-            - category (string): Specific category like 'mens hoodie', 'womens dress', etc.
-            - condition (number): Rating from 1-10 of the item's condition
-            - seo_keywords (array): 5 most relevant search terms for this item
-            
+            - brand: the brand name or "Generic" if no clear brand
+            - category: the type of clothing (e.g. hoodie, t-shirt, etc.)
+            - condition: a rating from 1-10 of the item's condition
+            - seo_keywords: list of relevant search terms
             Format as valid JSON only, no other text."""
 
             # Generate the analysis
@@ -167,21 +164,37 @@ def analyze_with_gemini(image_path: str) -> str:
                 
             log_info("Gemini API response received")
             log_info(f"Response text: {response.text}")
-            return response.text
+
+            # Parse the response as JSON
+            try:
+                # Clean up the response text
+                response_text = response.text.strip()
+                if response_text.startswith('```json'):
+                    response_text = response_text[7:]
+                if response_text.endswith('```'):
+                    response_text = response_text[:-3]
+                response_text = response_text.strip()
                 
+                # Parse JSON
+                result = json.loads(response_text)
+                log_info(f"Parsed Gemini result: {result}")
+                return result
+            except json.JSONDecodeError as e:
+                log_error(f"Failed to parse Gemini response as JSON: {response_text}", e)
+                raise
+
         except Exception as e:
-            log_error(f"Error in Gemini API call: {str(e)}")
+            log_error(f"Error in Gemini API call", e)
             raise
 
     except Exception as e:
-        log_error(f"Error in analyze_with_gemini: {str(e)}")
-        return json.dumps({
+        log_error(f"Error in analyze_with_gemini", e)
+        return {
             "brand": "Unknown",
             "category": "Unknown",
-            "condition": 0,
-            "seo_keywords": [],
-            "error": str(e)
-        })
+            "condition": 5,
+            "seo_keywords": []
+        }
 
 def get_gemini_fallback_data(search_term):
     """Get suggested keywords from Gemini when PyTrends fails."""
