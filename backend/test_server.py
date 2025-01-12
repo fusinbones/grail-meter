@@ -195,20 +195,40 @@ def analyze_with_gemini(image_path: str) -> Dict[str, Union[str, int, List[str]]
             # Log successful analysis
             log_info(f"Successfully analyzed image: {result['brand']} {result['category']}")
             
-            return result
+            # Format the response to match frontend expectations
+            return {
+                "product": {
+                    "title": f"{result['brand']} {result['category']}",
+                    "description": f"A {result['condition']}/10 condition {result['category']} from {result['brand']}.",
+                    "details": result.get('details', {}),
+                    "authenticity_indicators": result.get('authenticity_indicators', []),
+                    "estimated_retail_range": result.get('estimated_retail_range', {"min": "N/A", "max": "N/A"})
+                },
+                "seo": {
+                    "primary_keywords": result.get('seo_keywords', []),
+                    "brand": result['brand'],
+                    "category": result['category'],
+                    "condition": result['condition']
+                }
+            }
             
         except Exception as e:
             log_error("Failed to analyze image with Gemini", e)
             # Return a structured error response
             return {
-                "brand": "Error",
-                "category": "Error",
-                "condition": 0,
-                "error": str(e),
-                "seo_keywords": [],
-                "details": {
-                    "error_type": type(e).__name__,
-                    "timestamp": datetime.now().isoformat()
+                "product": {
+                    "title": "Error",
+                    "description": str(e),
+                    "details": {
+                        "error_type": type(e).__name__,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                },
+                "seo": {
+                    "primary_keywords": [],
+                    "brand": "Error",
+                    "category": "Error",
+                    "condition": 0
                 }
             }
             
@@ -216,14 +236,19 @@ def analyze_with_gemini(image_path: str) -> Dict[str, Union[str, int, List[str]]
         log_error("Failed to analyze image with Gemini", e)
         # Return a structured error response
         return {
-            "brand": "Error",
-            "category": "Error",
-            "condition": 0,
-            "error": str(e),
-            "seo_keywords": [],
-            "details": {
-                "error_type": type(e).__name__,
-                "timestamp": datetime.now().isoformat()
+            "product": {
+                "title": "Error",
+                "description": str(e),
+                "details": {
+                    "error_type": type(e).__name__,
+                    "timestamp": datetime.now().isoformat()
+                }
+            },
+            "seo": {
+                "primary_keywords": [],
+                "brand": "Error",
+                "category": "Error",
+                "condition": 0
             }
         }
 
@@ -271,19 +296,7 @@ async def analyze_image(file: UploadFile):
             
         # Parse and structure the Gemini result
         try:
-            result = {
-                'product': {
-                    'brand': gemini_result.get('brand', 'Unknown Brand'),
-                    'category': gemini_result.get('category', 'Unknown Category'),
-                    'condition': gemini_result.get('condition', 5),
-                    'title': f"{gemini_result.get('brand', '')} {gemini_result.get('category', '')}".strip(),
-                    'description': generate_product_description(gemini_result),
-                },
-                'seo': {
-                    'primary_keywords': get_top_keywords(gemini_result.get('seo_keywords', []), 5),
-                    'all_keywords': gemini_result.get('seo_keywords', [])
-                }
-            }
+            result = gemini_result
             
             log_info(f"Analysis complete: {result}")
             return result

@@ -224,36 +224,36 @@ function App() {
               
               <Box sx={{ mb: 2 }}>
                 <Typography variant="h6" color="primary">
-                  {analysisResult.brand} - {analysisResult.category}
+                  {analysisResult.product.title}
                 </Typography>
                 <Typography variant="subtitle1">
-                  Condition: {analysisResult.condition}/10
+                  Condition: {analysisResult.seo.condition}/10
                 </Typography>
               </Box>
 
-              {analysisResult.details && (
+              {analysisResult.product.details && (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="h6">Details</Typography>
                   <Typography variant="body1">
-                    <strong>Materials:</strong> {analysisResult.details.materials}
+                    <strong>Materials:</strong> {analysisResult.product.details.materials}
                   </Typography>
                   <Typography variant="body1">
-                    <strong>Colors:</strong> {analysisResult.details.colorway}
+                    <strong>Colors:</strong> {analysisResult.product.details.colorway}
                   </Typography>
                   <Typography variant="body1">
-                    <strong>Style:</strong> {analysisResult.details.style}
+                    <strong>Style:</strong> {analysisResult.product.details.style}
                   </Typography>
-                  {analysisResult.details.notable_features && (
+                  {analysisResult.product.details.notable_features && (
                     <Box sx={{ mt: 1 }}>
                       <Typography variant="body1">
                         <strong>Notable Features:</strong>
                       </Typography>
                       <ul style={{ marginTop: 4 }}>
-                        {Array.isArray(analysisResult.details.notable_features) 
-                          ? analysisResult.details.notable_features.map((feature, index) => (
+                        {Array.isArray(analysisResult.product.details.notable_features) 
+                          ? analysisResult.product.details.notable_features.map((feature, index) => (
                             <li key={index}>{feature}</li>
                           ))
-                          : <li>{analysisResult.details.notable_features}</li>
+                          : <li>{analysisResult.product.details.notable_features}</li>
                         }
                       </ul>
                     </Box>
@@ -261,24 +261,24 @@ function App() {
                 </Box>
               )}
 
-              {analysisResult.estimated_retail_range && (
+              {analysisResult.product.estimated_retail_range && (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="h6">Estimated Retail Range</Typography>
                   <Typography variant="body1">
-                    ${analysisResult.estimated_retail_range.min} - ${analysisResult.estimated_retail_range.max}
+                    ${analysisResult.product.estimated_retail_range.min} - ${analysisResult.product.estimated_retail_range.max}
                   </Typography>
                 </Box>
               )}
 
-              {analysisResult.authenticity_indicators && (
+              {analysisResult.product.authenticity_indicators && (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="h6">Authenticity Indicators</Typography>
                   <ul style={{ marginTop: 4 }}>
-                    {Array.isArray(analysisResult.authenticity_indicators) 
-                      ? analysisResult.authenticity_indicators.map((indicator, index) => (
+                    {Array.isArray(analysisResult.product.authenticity_indicators) 
+                      ? analysisResult.product.authenticity_indicators.map((indicator, index) => (
                         <li key={index}>{indicator}</li>
                       ))
-                      : <li>{analysisResult.authenticity_indicators}</li>
+                      : <li>{analysisResult.product.authenticity_indicators}</li>
                     }
                   </ul>
                 </Box>
@@ -287,7 +287,7 @@ function App() {
               <Box sx={{ mb: 2 }}>
                 <Typography variant="h6">Keywords</Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {analysisResult.seo_keywords.map((keyword, index) => (
+                  {analysisResult.seo.primary_keywords && analysisResult.seo.primary_keywords.map((keyword, index) => (
                     <KeywordChip key={index} label={keyword} />
                   ))}
                 </Box>
@@ -298,9 +298,9 @@ function App() {
                   <Typography color="error">
                     Error: {analysisResult.error}
                   </Typography>
-                  {analysisResult.details?.error_type && (
+                  {analysisResult.product?.details?.error_type && (
                     <Typography variant="caption" color="error">
-                      Type: {analysisResult.details.error_type}
+                      Type: {analysisResult.product.details.error_type}
                     </Typography>
                   )}
                 </Box>
