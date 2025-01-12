@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress, Button, IconButton } from '@mui/material';
+import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress, Button, IconButton, Link } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { DropzoneArea } from 'mui-file-dropzone';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
@@ -317,6 +317,63 @@ function App() {
                     />
                   ))}
                 </Box>
+              </div>
+            </StyledPaper>
+          </Grid>
+
+          {/* eBay Listings */}
+          <Grid item xs={12} md={6}>
+            <StyledPaper>
+              <div className="glass-card">
+                <Typography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
+                  Similar eBay Listings
+                </Typography>
+                {analysisResult.ebayListings && analysisResult.ebayListings.map((listing, index) => (
+                  <Box 
+                    key={index} 
+                    sx={{ 
+                      mb: 2, 
+                      p: 2, 
+                      borderRadius: 1,
+                      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                      '&:hover': {
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      }
+                    }}
+                  >
+                    <Link 
+                      href={listing.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      sx={{ 
+                        textDecoration: 'none',
+                        color: 'inherit',
+                        '&:hover': {
+                          textDecoration: 'underline'
+                        }
+                      }}
+                    >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                        {listing.title}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                        <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
+                          ${listing.price}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {listing.condition}
+                        </Typography>
+                      </Box>
+                    </Link>
+                  </Box>
+                ))}
+                {analysisResult.averagePrice > 0 && (
+                  <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
+                    <Typography variant="h6" sx={{ color: '#4A4C58', fontWeight: 600 }}>
+                      Average Price: ${analysisResult.averagePrice}
+                    </Typography>
+                  </Box>
+                )}
               </div>
             </StyledPaper>
           </Grid>

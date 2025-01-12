@@ -375,10 +375,9 @@ def analyze_images(image_path):
         log_info("Processing image...")
         img = Image.open(image_path)
         
-        # Use Gemini for image analysis
+        # First prompt for product details
         model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        prompt = """Analyze this streetwear/fashion item and provide details in this exact format:
+        initial_prompt = """Analyze this streetwear/fashion item and provide details in this exact format:
         {
             "product": {
                 "title": "Specific product name with brand if visible",
@@ -397,8 +396,8 @@ def analyze_images(image_path):
         }
         Provide ONLY valid JSON, no additional text."""
         
-        log_info("Sending request to Gemini API...")
-        response = model.generate_content([prompt, img])
+        log_info("Sending initial request to Gemini API...")
+        response = model.generate_content([initial_prompt, img])
         
         if not response or not response.text:
             raise Exception("Empty response from Gemini API")
@@ -407,9 +406,46 @@ def analyze_images(image_path):
         cleaned_json = clean_json_string(response.text)
         result = json.loads(cleaned_json)
         
-        # Add SEO score
+        # Second prompt for eBay listings
+        ebay_prompt = f"""Search for eBay listings matching this product: {result['product']['title']}
+        
+        Find the top 5 most similar listings and format the response as valid JSON like this:
+        {{
+            "listings": [
+                {{
+                    "title": "exact listing title",
+                    "price": "price in USD",
+                    "condition": "item condition",
+                    "url": "listing URL"
+                }}
+            ],
+            "averagePrice": "calculated average price in USD"
+        }}
+        
+        Important:
+        1. Only include active listings (not sold)
+        2. Make sure prices are in USD
+        3. Calculate the exact average of the prices
+        4. Only include listings that are very similar to the analyzed item
+        5. Format prices as numbers (e.g., 149.99)
+        
+        Provide ONLY valid JSON, no additional text."""
+        
+        log_info("Sending eBay analysis request to Gemini API...")
+        ebay_response = model.generate_content([ebay_prompt, img])
+        
+        if not ebay_response or not ebay_response.text:
+            raise Exception("Empty eBay response from Gemini API")
+            
+        # Clean and parse the eBay response
+        ebay_cleaned_json = clean_json_string(ebay_response.text)
+        ebay_result = json.loads(ebay_cleaned_json)
+        
+        # Add eBay data and SEO score to final result
+        result["ebayListings"] = ebay_result["listings"]
+        result["averagePrice"] = ebay_result["averagePrice"]
         result["seo"] = {
-            "condition": random.randint(7, 10)  # Placeholder for condition rating
+            "condition": random.randint(7, 10)
         }
         
         log_info(f"Final result: {json.dumps(result, indent=2)}")
@@ -417,7 +453,6 @@ def analyze_images(image_path):
         
     except Exception as e:
         log_error(f"Error in analyze_images: {str(e)}")
-        # Return a default response instead of raising
         return {
             "product": {
                 "title": "Unknown Product",
@@ -429,6 +464,8 @@ def analyze_images(image_path):
             },
             "keywords": ["vintage", "rare", "authentic", "collectible", "unique"],
             "longTailKeywords": [],
+            "ebayListings": [],
+            "averagePrice": 0,
             "seo": {
                 "condition": 7
             }
