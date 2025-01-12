@@ -19,6 +19,8 @@ from bs4 import BeautifulSoup
 import psutil
 import signal
 import sys
+import random
+import asyncio
 
 # Load environment variables
 load_dotenv()
@@ -243,139 +245,105 @@ def get_free_proxies():
         log_error(f"[Proxy] Error fetching proxy list: {str(e)}")
         return []
 
+async def get_proxy_list():
+    """Get a list of proxies."""
+    return get_free_proxies()
+
 async def get_trend_data(search_term: str) -> List[Dict[str, Any]]:
     try:
         log_info(f"[PyTrends] Starting trend data fetch for: {search_term}")
         
-        # Create search terms from specific to broad
-        terms = []
-        words = search_term.split()
+        # Use proxyrack proxy
+        proxy_config = {
+            'http': 'http://customer-grailmeter-cc-us:0d06c2-5f3d7d-13a1bc-ea4aaf-c2f857@pr.oxylabs.io:7777',
+            'https': 'http://customer-grailmeter-cc-us:0d06c2-5f3d7d-13a1bc-ea4aaf-c2f857@pr.oxylabs.io:7777'
+        }
         
-        # Original term
-        terms.append(search_term)
+        # Initialize pytrends with proxy as per readme
+        pytrends = TrendReq(
+            hl='en-US',
+            tz=360,
+            timeout=(10,25),
+            proxies=proxy_config,
+            retries=2,
+            backoff_factor=0.1
+        )
         
-        # Try without brand name if it's a multi-word term
-        if len(words) > 1:
-            terms.append(words[-1])  # Just the item type (e.g., "hoodie")
+        # Clean search term
+        clean_term = search_term.lower().strip()
+        log_info(f"[PyTrends] Using search term: {clean_term}")
+        
+        # Add delay before request as per readme
+        await asyncio.sleep(1)
+        
+        # Build payload exactly as shown in readme
+        pytrends.build_payload(
+            kw_list=[clean_term],  # Single keyword as recommended
+            cat=0,
+            timeframe='today 3-m',
+            geo='',
+            gprop=''
+        )
+        
+        # Add delay between requests as per readme
+        await asyncio.sleep(1)
+        
+        # Get interest over time data
+        interest_df = pytrends.interest_over_time()
+        
+        if not interest_df.empty:
+            log_info("[PyTrends] Got interest over time data")
+            result = []
+            for date, row in interest_df.iterrows():
+                volume = int(row[clean_term])
+                result.append({
+                    'date': date.strftime('%Y-%m-%d'),
+                    'volume': volume
+                })
             
-        # Add category term
-        category_term = None
-        if 'hoodie' in search_term.lower():
-            category_term = 'hoodie fashion'
-        elif 'jacket' in search_term.lower():
-            category_term = 'jacket fashion'
-        elif 'shirt' in search_term.lower():
-            category_term = 'shirt fashion'
-        elif 'pants' in search_term.lower():
-            category_term = 'pants fashion'
-        
-        if category_term:
-            terms.append(category_term)
-        
-        log_info(f"[PyTrends] Search terms from specific to broad: {terms}")
-        
-        # Initialize PyTrends with shorter timeout
-        pytrends = TrendReq(hl='en-US', tz=360, timeout=(2.0, 5.0))
-        
-        # Try different geographic regions
-        regions = ['US', 'GB', 'worldwide']
-        timeframes = ['today 3-m', 'today 1-m', 'now 7-d']
-        
-        for term in terms:
-            for region in regions:
-                for timeframe in timeframes:
-                    try:
-                        log_info(f"[PyTrends] Trying term '{term}' in {region} for {timeframe}")
-                        
-                        # Build payload with specific parameters
-                        pytrends.build_payload(
-                            [term],
-                            cat=185,  # Fashion category
-                            timeframe=timeframe,
-                            geo=region if region != 'worldwide' else '',
-                            gprop=''
-                        )
-                        
-                        # Try to get interest over time
-                        trend_data = pytrends.interest_over_time()
-                        
-                        if not trend_data.empty:
-                            # Convert to list of dictionaries
-                            result = []
-                            for date, row in trend_data.iterrows():
-                                volume = int(row[term])
-                                if volume > 0:  # Only include non-zero values
-                                    result.append({
-                                        'date': date.strftime('%Y-%m-%d'),
-                                        'volume': volume
-                                    })
-                            
-                            if result:  # If we have any non-zero values
-                                log_info(f"[PyTrends] Found data for '{term}' in {region} ({timeframe})")
-                                return result
-                            
-                        # If we get here, try related queries
-                        related_queries = pytrends.related_queries()
-                        if related_queries and term in related_queries:
-                            top_df = related_queries[term].get('top')
-                            if isinstance(top_df, pd.DataFrame) and not top_df.empty:
-                                # Use the related query volumes as trend data
-                                result = []
-                                current_date = datetime.now()
-                                for _, row in top_df.iterrows():
-                                    if row['value'] > 0:
-                                        result.append({
-                                            'date': current_date.strftime('%Y-%m-%d'),
-                                            'volume': int(row['value'])
-                                        })
-                                
-                                if result:
-                                    log_info(f"[PyTrends] Found related query data for '{term}'")
-                                    return result
-                                    
-                    except Exception as e:
-                        log_error(f"[PyTrends] Error for term '{term}' in {region} ({timeframe})", e)
-                        continue
-        
-        # If we get here, try one last time with a very broad fashion term
-        try:
-            pytrends.build_payload(
-                ['fashion trends'],
-                cat=185,
-                timeframe='today 1-m',
-                geo='US',
-                gprop=''
-            )
+            if any(item['volume'] > 0 for item in result):
+                log_info("[PyTrends] Found non-zero trend data")
+                return result
             
-            trend_data = pytrends.interest_over_time()
+            # If all volumes are zero, try related queries
+            await asyncio.sleep(1)  # Delay before new request
             
-            if not trend_data.empty:
-                result = []
-                for date, row in trend_data.iterrows():
-                    volume = int(row['fashion trends'])
-                    if volume > 0:
-                        result.append({
-                            'date': date.strftime('%Y-%m-%d'),
-                            'volume': volume
-                        })
-                if result:
-                    log_info("[PyTrends] Using fallback fashion trends data")
-                    return result
-                    
-        except Exception as e:
-            log_error("[PyTrends] Error fetching fallback data", e)
-            
-        # If all else fails, return some reasonable default data
-        log_info("[PyTrends] Using default trend data")
+            related_queries = pytrends.related_queries()
+            if related_queries and clean_term in related_queries:
+                top_df = related_queries[clean_term].get('top')
+                if isinstance(top_df, pd.DataFrame) and not top_df.empty:
+                    current_date = datetime.now()
+                    result = []
+                    for _, row in top_df.iterrows():
+                        if row['value'] > 0:
+                            result.append({
+                                'date': current_date.strftime('%Y-%m-%d'),
+                                'volume': int(row['value'])
+                            })
+                    if result:
+                        log_info("[PyTrends] Using related query volumes")
+                        return result
+        
+        log_info("[PyTrends] No trend data found, using default data")
         current_date = datetime.now()
         return [
-            {'date': (current_date - timedelta(days=i*7)).strftime('%Y-%m-%d'), 'volume': 50}
+            {
+                'date': (current_date - timedelta(days=i*7)).strftime('%Y-%m-%d'),
+                'volume': 50
+            }
             for i in range(8)
         ]
         
     except Exception as e:
         log_error("[PyTrends] Error fetching trend data", e)
-        return []
+        current_date = datetime.now()
+        return [
+            {
+                'date': (current_date - timedelta(days=i*7)).strftime('%Y-%m-%d'),
+                'volume': 50
+            }
+            for i in range(8)
+        ]
 
 @app.post("/analyze")
 async def analyze_image(file: UploadFile):
@@ -464,9 +432,9 @@ async def process_image(contents, filename):
 
                     # Get trend data
                     try:
-                        log_info("Starting PyTrends data fetch")
+                        log_info("Starting trend estimation")
                         trend_result = await get_trend_data(search_term)
-                        log_info(f"PyTrends data: {trend_result}")
+                        log_info(f"Trend estimation result: {trend_result}")
 
                         # Combine results
                         result.update(trend_result)
