@@ -350,6 +350,16 @@ async def read_root():
 async def test_endpoint():
     return {"message": "API is working"}
 
+@app.get("/ip")
+async def get_ip():
+    """Get the server's public IP address."""
+    try:
+        response = requests.get('https://api.ipify.org?format=json')
+        return response.json()
+    except Exception as e:
+        logging.error(f"Error getting IP: {str(e)}")
+        return {"error": str(e)}
+
 @app.post("/analyze")
 async def analyze_images(files: List[UploadFile] = File(...)):
     """Analyze uploaded images."""
