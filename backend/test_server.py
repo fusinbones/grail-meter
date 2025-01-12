@@ -216,7 +216,7 @@ def get_free_proxies():
         return []
 
 def get_trend_data(search_term):
-    """Get trend data using PyTrends with dynamic proxy support."""
+    """Get trend data using PyTrends with specific proxy."""
     try:
         logging.info(f"[PyTrends] Starting trend data fetch for: {search_term}")
         
@@ -256,101 +256,86 @@ def get_trend_data(search_term):
             'DNT': '1',
         }
 
-        # Get fresh list of proxies
-        proxies = get_free_proxies()
-        if not proxies:
-            logging.warning("[PyTrends] No proxies available, trying without proxy")
-            proxies = [None]  # Try without proxy as last resort
+        # Use the provided proxy
+        proxy = "http://5.79.66.2:13010"
+        proxy_config = {
+            'http': proxy,
+            'https': proxy
+        }
         
-        # Try each proxy until we get data
-        for proxy in proxies:
+        logging.info(f"[PyTrends] Using proxy: {proxy}")
+        
+        # Initialize PyTrends with proxy settings
+        pytrends = TrendReq(
+            hl='en-US',
+            tz=360,
+            timeout=(30,30),
+            retries=2,
+            backoff_factor=1.5,
+            requests_args={
+                'verify': True,
+                'headers': custom_headers,
+                'allow_redirects': True,
+                'proxies': proxy_config
+            }
+        )
+        
+        # Try each term until we get data
+        for term in terms:
             try:
-                if proxy:
-                    logging.info(f"[PyTrends] Trying proxy: {proxy}")
-                    proxy_config = {
-                        'http': proxy,
-                        'https': proxy
-                    }
-                else:
-                    logging.info("[PyTrends] Trying without proxy")
-                    proxy_config = {}
+                logging.info(f"[PyTrends] Trying search term: {term}")
                 
-                # Initialize PyTrends with proxy settings
-                pytrends = TrendReq(
-                    hl='en-US',
-                    tz=360,
-                    timeout=(30,30),
-                    retries=2,
-                    backoff_factor=1.5,
-                    requests_args={
-                        'verify': True,
-                        'headers': custom_headers,
-                        'allow_redirects': True,
-                        'proxies': proxy_config
-                    }
+                # Add a small delay between requests
+                import time
+                time.sleep(1.5)
+                
+                pytrends.build_payload(
+                    kw_list=[term],
+                    cat=0,
+                    timeframe='today 12-m',
+                    geo='US'
                 )
                 
-                # Try each term with the current proxy
-                for term in terms:
-                    try:
-                        logging.info(f"[PyTrends] Trying search term: {term}")
-                        
-                        # Add a small delay between requests
-                        import time
-                        time.sleep(1.5)
-                        
-                        pytrends.build_payload(
-                            kw_list=[term],
-                            cat=0,
-                            timeframe='today 12-m',
-                            geo='US'
-                        )
-                        
-                        # Get interest over time
-                        interest_df = pytrends.interest_over_time()
-                        
-                        if interest_df is not None and not interest_df.empty:
-                            logging.info(f"[PyTrends] Found data for term: {term}")
-                            trend_data = [{
-                                'date': date.strftime('%Y-%m-%d'),
-                                'volume': int(row[term])
-                            } for date, row in interest_df.iterrows() 
-                            if term in row and pd.notna(row[term])]
-                            
-                            # Add delay before getting related queries
-                            time.sleep(1.5)
-                            
-                            # Get related queries
-                            related = pytrends.related_queries()
-                            keywords_data = []
-                            if related and term in related:
-                                top_df = related[term].get('top')
-                                if isinstance(top_df, pd.DataFrame) and not top_df.empty:
-                                    keywords_data = [{
-                                        'keyword': str(row['query']),
-                                        'volume': int(row['value'])
-                                    } for _, row in top_df.iterrows()]
-                            
-                            logging.info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
-                            return {
-                                'trend_data': trend_data,
-                                'keywords_data': keywords_data
-                            }
-                        else:
-                            logging.warning(f"[PyTrends] No data found for term: {term}")
-                            continue
-                            
-                    except Exception as e:
-                        logging.error(f"[PyTrends] Error with term {term}: {str(e)}", exc_info=True)
-                        continue
-                        
+                # Get interest over time
+                interest_df = pytrends.interest_over_time()
+                
+                if interest_df is not None and not interest_df.empty:
+                    logging.info(f"[PyTrends] Found data for term: {term}")
+                    trend_data = [{
+                        'date': date.strftime('%Y-%m-%d'),
+                        'volume': int(row[term])
+                    } for date, row in interest_df.iterrows() 
+                    if term in row and pd.notna(row[term])]
+                    
+                    # Add delay before getting related queries
+                    time.sleep(1.5)
+                    
+                    # Get related queries
+                    related = pytrends.related_queries()
+                    keywords_data = []
+                    if related and term in related:
+                        top_df = related[term].get('top')
+                        if isinstance(top_df, pd.DataFrame) and not top_df.empty:
+                            keywords_data = [{
+                                'keyword': str(row['query']),
+                                'volume': int(row['value'])
+                            } for _, row in top_df.iterrows()]
+                    
+                    logging.info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
+                    return {
+                        'trend_data': trend_data,
+                        'keywords_data': keywords_data
+                    }
+                else:
+                    logging.warning(f"[PyTrends] No data found for term: {term}")
+                    continue
+                    
             except Exception as e:
-                proxy_msg = f"proxy {proxy}" if proxy else "without proxy"
-                logging.error(f"[PyTrends] Error {proxy_msg}: {str(e)}", exc_info=True)
+                logging.error(f"[PyTrends] Error with term {term}: {str(e)}", exc_info=True)
                 continue
         
-        # If we get here, no proxies or terms worked
-        logging.error("[PyTrends] No data found with any proxy or search terms")
+        # If we get here, no terms worked
+        logging.error("[PyTrends] No data found with any search terms")
         return {'trend_data': [], 'keywords_data': []}
             
     except Exception as e:
