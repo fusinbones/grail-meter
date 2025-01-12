@@ -6,18 +6,37 @@ import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import './App.css';
 
-const StyledPaper = styled(Paper)(({ theme }) => `
-  background-color: #FFFFFF;
-  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
-  border-radius: 16px;
-  height: 100%;
-  & .glass-card {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: 24px;
-  }
-`);
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  height: '100%',
+  padding: theme.spacing(3),
+  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  backdropFilter: 'blur(10px)',
+  borderRadius: '16px',
+  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+  border: '1px solid rgba(255, 255, 255, 0.3)',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+  '& .glass-card': {
+    flex: 1,
+    overflow: 'auto',
+    padding: theme.spacing(1),
+    '&::-webkit-scrollbar': {
+      width: '8px',
+    },
+    '&::-webkit-scrollbar-track': {
+      background: 'rgba(0, 0, 0, 0.05)',
+      borderRadius: '4px',
+    },
+    '&::-webkit-scrollbar-thumb': {
+      background: 'rgba(0, 0, 0, 0.2)',
+      borderRadius: '4px',
+      '&:hover': {
+        background: 'rgba(0, 0, 0, 0.3)',
+      },
+    },
+  },
+}));
 
 const ImageContainer = styled(Box)(({ theme }) => `
   width: 100%;
@@ -40,18 +59,20 @@ const ImageContainer = styled(Box)(({ theme }) => `
   }
 `);
 
-const KeywordChip = styled(Chip)(({ theme }) => `
-  margin: 4px;
-  background-color: #F0F2F8;
-  color: #4A4C58;
-  border: none;
-  font-weight: 500;
-  &:hover {
-    background-color: #E8EAF2;
-    transform: translateY(-2px);
+const KeywordChip = styled(Chip)(({ theme }) => ({
+  margin: '4px',
+  height: 'auto',
+  maxWidth: 'none',
+  '& .MuiChip-label': {
+    whiteSpace: 'normal',
+    overflow: 'visible',
+    textOverflow: 'clip',
+    display: 'block',
+    padding: '8px 12px',
+    lineHeight: '1.2',
+    wordBreak: 'break-word'
   }
-  transition: all 0.3s ease;
-`);
+}));
 
 const StyledButton = styled(Button)(({ theme }) => `
   background-color: #6C5CE7;
@@ -66,6 +87,13 @@ const StyledButton = styled(Button)(({ theme }) => `
   }
   transition: all 0.3s ease;
 `);
+
+const ResponsiveTypography = styled(Typography)(({ theme }) => ({
+  wordBreak: 'break-word',
+  hyphens: 'auto',
+  overflowWrap: 'break-word',
+  width: '100%',
+}));
 
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -160,7 +188,7 @@ function App() {
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
-      <Typography 
+      <ResponsiveTypography 
         variant="h3" 
         component="h1" 
         align="center" 
@@ -173,7 +201,7 @@ function App() {
         }}
       >
         Grail Meter
-      </Typography>
+      </ResponsiveTypography>
 
       {!selectedImage && !showCamera && (
         <Grid container spacing={2} justifyContent="center">
@@ -259,30 +287,25 @@ function App() {
             </StyledPaper>
           </Grid>
 
-          {/* Product Details */}
+          {/* Product Information */}
           <Grid item xs={12} md={6}>
             <StyledPaper>
               <div className="glass-card">
-                <Typography variant="h5" sx={{ color: '#4A4C58', mb: 1, fontWeight: 600 }}>
-                  {analysisResult.product.title}
-                </Typography>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
-                    <strong>Color:</strong> {analysisResult.product.color}
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
-                    <strong>Category:</strong> {analysisResult.product.category}
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
-                    <strong>Gender:</strong> {analysisResult.product.gender}
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
-                    <strong>Size:</strong> {analysisResult.product.size}
-                  </Typography>
+                <ResponsiveTypography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
+                  Product Details
+                </ResponsiveTypography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  {analysisResult.product && Object.entries(analysisResult.product).map(([key, value]) => (
+                    <Box key={key} sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <ResponsiveTypography variant="subtitle2" sx={{ color: '#4A4C58', fontWeight: 600, textTransform: 'capitalize' }}>
+                        {key}
+                      </ResponsiveTypography>
+                      <ResponsiveTypography variant="body1" sx={{ color: '#666', mt: 0.5 }}>
+                        {value}
+                      </ResponsiveTypography>
+                    </Box>
+                  ))}
                 </Box>
-                <Typography variant="body1" sx={{ color: '#4A4C58', mb: 0.5 }}>
-                  <strong>Material:</strong> {analysisResult.product.material}
-                </Typography>
               </div>
             </StyledPaper>
           </Grid>
@@ -291,18 +314,18 @@ function App() {
           <Grid item xs={12} md={6}>
             <StyledPaper>
               <div className="glass-card">
-                <Typography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
+                <ResponsiveTypography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
                   Top 5 Keywords for Listings
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-                  {analysisResult.keywords && analysisResult.keywords.slice(0, 5).map((keyword, index) => (
+                </ResponsiveTypography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 3 }}>
+                  {analysisResult.keywords && analysisResult.keywords.map((keyword, index) => (
                     <KeywordChip key={index} label={keyword} />
                   ))}
                 </Box>
-                <Typography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
+                <ResponsiveTypography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
                   Long Tail Keywords
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                </ResponsiveTypography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   {analysisResult.longTailKeywords && analysisResult.longTailKeywords.map((keyword, index) => (
                     <KeywordChip 
                       key={index} 
@@ -325,9 +348,9 @@ function App() {
           <Grid item xs={12} md={6}>
             <StyledPaper>
               <div className="glass-card">
-                <Typography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
+                <ResponsiveTypography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
                   Similar eBay Listings
-                </Typography>
+                </ResponsiveTypography>
                 {analysisResult.ebayListings && analysisResult.ebayListings.map((listing, index) => (
                   <Box 
                     key={index} 
@@ -353,25 +376,25 @@ function App() {
                         }
                       }}
                     >
-                      <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                      <ResponsiveTypography variant="subtitle1" sx={{ fontWeight: 500 }}>
                         {listing.title}
-                      </Typography>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                        <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
+                      </ResponsiveTypography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, flexWrap: 'wrap', gap: 1 }}>
+                        <ResponsiveTypography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
                           ${listing.price}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        </ResponsiveTypography>
+                        <ResponsiveTypography variant="body2" color="text.secondary">
                           {listing.condition}
-                        </Typography>
+                        </ResponsiveTypography>
                       </Box>
                     </Link>
                   </Box>
                 ))}
                 {analysisResult.averagePrice > 0 && (
                   <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
-                    <Typography variant="h6" sx={{ color: '#4A4C58', fontWeight: 600 }}>
+                    <ResponsiveTypography variant="h6" sx={{ color: '#4A4C58', fontWeight: 600 }}>
                       Average Price: ${analysisResult.averagePrice}
-                    </Typography>
+                    </ResponsiveTypography>
                   </Box>
                 )}
               </div>
@@ -388,9 +411,9 @@ function App() {
                 minHeight: '150px',
                 backgroundColor: '#F8F9FD'
               }}>
-                <Typography variant="h6" sx={{ color: '#6C5CE7', fontWeight: 500, opacity: 0.8 }}>
+                <ResponsiveTypography variant="h6" sx={{ color: '#6C5CE7', fontWeight: 500, opacity: 0.8 }}>
                   Keyword Research Feature Coming Soon
-                </Typography>
+                </ResponsiveTypography>
               </div>
             </StyledPaper>
           </Grid>
@@ -398,9 +421,9 @@ function App() {
       )}
 
       {error && (
-        <Typography color="error" align="center" sx={{ mt: 2 }}>
+        <ResponsiveTypography color="error" align="center" sx={{ mt: 2 }}>
           {error}
-        </Typography>
+        </ResponsiveTypography>
       )}
     </Container>
   );
