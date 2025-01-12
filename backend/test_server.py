@@ -402,11 +402,23 @@ def analyze_images(image_path):
             "Zip-up",
             "Streetwear"
         ]
+        
+        # Generate long-tail keywords
+        long_tail_keywords = [
+            "Armani Exchange Men's Grey Zip Hoodie",
+            "Authentic AX Designer Sweatshirt Black",
+            "Armani Exchange Casual Streetwear Hoodie",
+            "AX Two Tone Zip Up Jacket Grey Black",
+            "Armani Exchange Premium Cotton Blend Hoodie"
+        ]
+        
         log_info(f"Generated keywords: {keywords}")
+        log_info(f"Generated long-tail keywords: {long_tail_keywords}")
         
         result = {
             "product": product_info,
             "keywords": keywords,
+            "longTailKeywords": long_tail_keywords,
             "seo": {
                 "condition": 9  # High quality condition
             }
@@ -428,6 +440,7 @@ def analyze_images(image_path):
                 "material": "Not specified"
             },
             "keywords": ["vintage", "rare", "authentic", "collectible", "unique"],
+            "longTailKeywords": [],
             "seo": {
                 "condition": 7
             }

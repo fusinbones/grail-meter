@@ -294,9 +294,27 @@ function App() {
                 <Typography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
                   Top 5 Keywords for Listings
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
                   {analysisResult.keywords && analysisResult.keywords.slice(0, 5).map((keyword, index) => (
                     <KeywordChip key={index} label={keyword} />
+                  ))}
+                </Box>
+                <Typography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
+                  Long Tail Keywords
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {analysisResult.longTailKeywords && analysisResult.longTailKeywords.map((keyword, index) => (
+                    <KeywordChip 
+                      key={index} 
+                      label={keyword}
+                      sx={{ 
+                        backgroundColor: '#E8F0FE',
+                        color: '#1A73E8',
+                        '&:hover': {
+                          backgroundColor: '#D2E3FC'
+                        }
+                      }} 
+                    />
                   ))}
                 </Box>
               </div>
