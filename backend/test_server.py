@@ -211,7 +211,21 @@ def analyze_with_gemini(image_path: str) -> Dict[str, Union[str, int, List[str]]
                     "timestamp": datetime.now().isoformat()
                 }
             }
-{{ ... }}
+            
+    except Exception as e:
+        log_error("Failed to analyze image with Gemini", e)
+        # Return a structured error response
+        return {
+            "brand": "Error",
+            "category": "Error",
+            "condition": 0,
+            "error": str(e),
+            "seo_keywords": [],
+            "details": {
+                "error_type": type(e).__name__,
+                "timestamp": datetime.now().isoformat()
+            }
+        }
 
 async def process_uploaded_file(file: UploadFile) -> str:
     """Process the uploaded file and save it temporarily."""
