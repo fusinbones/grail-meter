@@ -256,7 +256,7 @@ def get_free_proxies():
         return []
 
 def get_trend_data(search_term):
-    """Get trend data using PyTrends with specific proxy."""
+    """Get trend data using PyTrends."""
     try:
         log_info(f"[PyTrends] Starting trend data fetch for: {search_term}")
         
@@ -287,15 +287,6 @@ def get_trend_data(search_term):
             
         log_info(f"[PyTrends] Search terms from specific to broad: {terms}")
 
-        # Custom headers to make requests look more like a browser
-        custom_headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Referer': 'https://trends.google.com/',
-            'DNT': '1',
-        }
-
         # Use rotating proxy with authentication
         proxy_host = "usa.rotating.proxyrack.net"
         proxy_port = "10100"  # Try a different port
@@ -311,6 +302,13 @@ def get_trend_data(search_term):
         }
         
         # Custom headers to mimic a real browser
+        custom_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Referer': 'https://trends.google.com/',
+            'DNT': '1',
+        }
         custom_headers.update({
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
@@ -319,11 +317,9 @@ def get_trend_data(search_term):
             'Cache-Control': 'max-age=0',
         })
         
-        log_info(f"[PyTrends] Using rotating proxy: {proxy_host}:{proxy_port}")
-        
-        # Test proxy connection with retries
-        max_retries = 3
-        retry_ports = [10100, 10150, 10200]  # Try different ports if one fails
+        # Initialize PyTrends with retry mechanism
+        retry_ports = [10100, 10150, 10200]
+        last_error = None
         
         for attempt, port in enumerate(retry_ports, 1):
             try:
@@ -332,50 +328,25 @@ def get_trend_data(search_term):
                     proxy_config = {'http': proxy_url, 'https': proxy_url}
                     log_info(f"[PyTrends] Retry {attempt} with port {port}")
                 
-                log_info("[PyTrends] Testing proxy connection...")
-                session = requests.Session()
-                session.proxies = proxy_config
-                session.headers.update(custom_headers)
-                session.verify = True
-                
-                test_response = session.get('https://trends.google.com/trends/explore', 
-                                         timeout=15,
-                                         allow_redirects=True)
-                
-                if test_response.status_code == 200:
-                    log_info(f"[PyTrends] Proxy test successful with port {port}")
-                    log_info(f"[PyTrends] Status code: {test_response.status_code}")
-                    break
-                else:
-                    log_info(f"[PyTrends] Proxy test failed with status {test_response.status_code}")
-                    if attempt == len(retry_ports):
-                        raise Exception(f"All proxy attempts failed. Last status: {test_response.status_code}")
-                    
+                pytrends = TrendReq(
+                    hl='en-US',
+                    tz=360,
+                    timeout=(15,15),
+                    retries=2,
+                    backoff_factor=1.5,
+                    requests_args={
+                        'verify': True,
+                        'headers': custom_headers,
+                        'allow_redirects': True,
+                        'proxies': proxy_config
+                    }
+                )
+                break
             except Exception as e:
-                log_error(f"[PyTrends] Proxy test attempt {attempt} failed", e)
+                last_error = e
+                log_error(f"[PyTrends] Initialization attempt {attempt} failed", e)
                 if attempt == len(retry_ports):
-                    raise
-
-        try:
-            # Initialize PyTrends with proxy settings
-            log_info("[PyTrends] Initializing TrendReq with proxy settings...")
-            pytrends = TrendReq(
-                hl='en-US',
-                tz=360,
-                timeout=(15,15),
-                retries=2,
-                backoff_factor=1.5,
-                requests_args={
-                    'verify': True,
-                    'headers': custom_headers,
-                    'allow_redirects': True,
-                    'proxies': proxy_config
-                }
-            )
-            log_info("[PyTrends] TrendReq initialized successfully")
-        except Exception as e:
-            log_error("[PyTrends] Failed to initialize TrendReq", e)
-            raise
+                    raise Exception(f"All PyTrends initialization attempts failed. Last error: {str(last_error)}")
         
         # Try each term until we get data
         for term in terms:
@@ -428,19 +399,28 @@ def get_trend_data(search_term):
                         if related and term in related:
                             top_df = related[term].get('top')
                             if isinstance(top_df, pd.DataFrame) and not top_df.empty:
-                                keywords_data = [{
-                                    'keyword': str(row['query']),
-                                    'volume': int(row['value'])
-                                } for _, row in top_df.iterrows()]
+                                # Convert to our keyword format
+                                for _, row in top_df.iterrows():
+                                    try:
+                                        keywords_data.append({
+                                            'keyword': str(row['query']),
+                                            'volume': int(row['value'])
+                                        })
+                                    except (ValueError, KeyError, TypeError) as e:
+                                        log_error(f"Error processing keyword: {e}")
+                                        continue
+                        
+                        log_info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
+                        return {
+                            'trend_data': trend_data,
+                            'keywords_data': keywords_data
+                        }
                     except Exception as e:
                         log_error("[PyTrends] Failed to fetch related queries", e)
-                        keywords_data = []
-                    
-                    log_info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
-                    return {
-                        'trend_data': trend_data,
-                        'keywords_data': keywords_data
-                    }
+                        return {
+                            'trend_data': trend_data,
+                            'keywords_data': []
+                        }
                 else:
                     log_info(f"[PyTrends] No data found for term: {term}")
                     continue
