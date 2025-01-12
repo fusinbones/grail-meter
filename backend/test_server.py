@@ -19,8 +19,35 @@ import requests
 from bs4 import BeautifulSoup
 
 # Configure logging
-logging.basicConfig(filename='server.log', level=logging.INFO,
-                    format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# Create a console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+
+# Get the root logger and add the console handler
+root_logger = logging.getLogger()
+root_logger.addHandler(console_handler)
+
+def log_error(message: str, error: Exception = None):
+    """Log error with a visible format for Railway logs."""
+    error_message = f"❌ ERROR: {message}"
+    if error:
+        error_message += f"\n🔍 DETAILS: {str(error)}"
+        if hasattr(error, '__traceback__'):
+            import traceback
+            trace = ''.join(traceback.format_tb(error.__traceback__))
+            error_message += f"\n📚 TRACE:\n{trace}"
+    logging.error(error_message)
+
+def log_info(message: str):
+    """Log info with a visible format for Railway logs."""
+    logging.info(f"ℹ️ INFO: {message}")
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -50,15 +77,15 @@ load_dotenv()
 # Configure Gemini API
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 if not GEMINI_API_KEY:
-    logging.error("GEMINI_API_KEY not found in environment variables!")
+    log_error("GEMINI_API_KEY not found in environment variables!")
 else:
-    logging.info("GEMINI_API_KEY found in environment")
+    log_info("GEMINI_API_KEY found in environment")
     
 try:
     genai.configure(api_key=GEMINI_API_KEY)
-    logging.info("Gemini API configured successfully")
+    log_info("Gemini API configured successfully")
 except Exception as e:
-    logging.error(f"Failed to configure Gemini API: {str(e)}")
+    log_error(f"Failed to configure Gemini API: {str(e)}")
 
 def clean_json_string(json_str: str) -> str:
     """Clean and format the JSON string from AI response."""
@@ -90,7 +117,7 @@ def clean_json_string(json_str: str) -> str:
             return json.dumps(parsed)
             
         except Exception as e:
-            logging.error(f"Failed to clean JSON string: {str(e)}")
+            log_error(f"Failed to clean JSON string: {str(e)}")
             return json.dumps({
                 "brand": "Unknown",
                 "category": "Unknown",
@@ -107,21 +134,21 @@ def analyze_with_gemini(image_path: str) -> str:
         if not GEMINI_API_KEY:
             raise Exception("GEMINI_API_KEY not configured")
             
-        logging.info("Starting Gemini analysis...")
+        log_info("Starting Gemini analysis...")
         
         try:
             # Load and verify the image
             img = PIL.Image.open(image_path)
-            logging.info(f"Image loaded successfully: size={img.size}, mode={img.mode}")
+            log_info(f"Image loaded successfully: size={img.size}, mode={img.mode}")
             
             # Convert image to RGB if needed
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-                logging.info("Converted image to RGB mode")
+                log_info("Converted image to RGB mode")
 
             # Use the new model name
             model = genai.GenerativeModel('gemini-1.5-flash')
-            logging.info("Created model instance with gemini-1.5-flash")
+            log_info("Created model instance with gemini-1.5-flash")
             
             # Prepare the prompt
             prompt = """Analyze this image and provide a JSON response with the following fields:
@@ -133,21 +160,21 @@ def analyze_with_gemini(image_path: str) -> str:
             Format as valid JSON only, no other text."""
 
             # Generate the analysis
-            logging.info("Sending request to Gemini API...")
+            log_info("Sending request to Gemini API...")
             response = model.generate_content([prompt, img])
             if not response or not response.text:
                 raise Exception("Empty response from Gemini API")
                 
-            logging.info("Gemini API response received")
-            logging.info(f"Response text: {response.text}")
+            log_info("Gemini API response received")
+            log_info(f"Response text: {response.text}")
             return response.text
                 
         except Exception as e:
-            logging.error(f"Error in Gemini API call: {str(e)}")
+            log_error(f"Error in Gemini API call: {str(e)}")
             raise
 
     except Exception as e:
-        logging.error(f"Error in analyze_with_gemini: {str(e)}")
+        log_error(f"Error in analyze_with_gemini: {str(e)}")
         return json.dumps({
             "brand": "Unknown",
             "category": "Unknown",
@@ -177,7 +204,7 @@ def get_gemini_fallback_data(search_term):
                 pass
                 
     except Exception as e:
-        logging.error(f"Gemini fallback error: {str(e)}")
+        log_error(f"Gemini fallback error: {str(e)}")
     
     return {
         'trend_data': [],
@@ -209,21 +236,21 @@ def get_free_proxies():
                         proxy = f'http://{ip}:{port}'
                         proxies.append(proxy)
                         
-        logging.info(f"[Proxy] Found {len(proxies)} potential proxies")
+        log_info(f"[Proxy] Found {len(proxies)} potential proxies")
         return proxies
     except Exception as e:
-        logging.error(f"[Proxy] Error fetching proxy list: {str(e)}")
+        log_error(f"[Proxy] Error fetching proxy list: {str(e)}")
         return []
 
 def get_trend_data(search_term):
     """Get trend data using PyTrends with specific proxy."""
     try:
-        logging.info(f"[PyTrends] Starting trend data fetch for: {search_term}")
+        log_info(f"[PyTrends] Starting trend data fetch for: {search_term}")
         
         # Clean search term and prepare fallback terms
         search_term = search_term.strip()
         if not search_term or len(search_term) < 2:
-            logging.warning(f"[PyTrends] Invalid search term: {search_term}")
+            log_info(f"[PyTrends] Invalid search term: {search_term}")
             return {'trend_data': [], 'keywords_data': []}
         
         # Create list of search terms from specific to broad
@@ -245,7 +272,7 @@ def get_trend_data(search_term):
         else:
             terms.append('streetwear fashion')
             
-        logging.info(f"[PyTrends] Search terms from specific to broad: {terms}")
+        log_info(f"[PyTrends] Search terms from specific to broad: {terms}")
 
         # Custom headers to make requests look more like a browser
         custom_headers = {
@@ -263,7 +290,7 @@ def get_trend_data(search_term):
             'https': proxy
         }
         
-        logging.info(f"[PyTrends] Using proxy: {proxy}")
+        log_info(f"[PyTrends] Using proxy: {proxy}")
         
         # Initialize PyTrends with proxy settings
         pytrends = TrendReq(
@@ -283,7 +310,7 @@ def get_trend_data(search_term):
         # Try each term until we get data
         for term in terms:
             try:
-                logging.info(f"[PyTrends] Trying search term: {term}")
+                log_info(f"[PyTrends] Trying search term: {term}")
                 
                 # Add a small delay between requests
                 import time
@@ -300,7 +327,7 @@ def get_trend_data(search_term):
                 interest_df = pytrends.interest_over_time()
                 
                 if interest_df is not None and not interest_df.empty:
-                    logging.info(f"[PyTrends] Found data for term: {term}")
+                    log_info(f"[PyTrends] Found data for term: {term}")
                     trend_data = [{
                         'date': date.strftime('%Y-%m-%d'),
                         'volume': int(row[term])
@@ -321,25 +348,25 @@ def get_trend_data(search_term):
                                 'volume': int(row['value'])
                             } for _, row in top_df.iterrows()]
                     
-                    logging.info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
+                    log_info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
                     return {
                         'trend_data': trend_data,
                         'keywords_data': keywords_data
                     }
                 else:
-                    logging.warning(f"[PyTrends] No data found for term: {term}")
+                    log_info(f"[PyTrends] No data found for term: {term}")
                     continue
                     
             except Exception as e:
-                logging.error(f"[PyTrends] Error with term {term}: {str(e)}", exc_info=True)
+                log_error(f"[PyTrends] Error with term {term}: {str(e)}", exc_info=True)
                 continue
         
         # If we get here, no terms worked
-        logging.error("[PyTrends] No data found with any search terms")
+        log_error("[PyTrends] No data found with any search terms")
         return {'trend_data': [], 'keywords_data': []}
             
     except Exception as e:
-        logging.error(f"[PyTrends] Critical error: {str(e)}", exc_info=True)
+        log_error(f"[PyTrends] Critical error: {str(e)}", exc_info=True)
         return {'trend_data': [], 'keywords_data': []}
 
 @app.get("/")
@@ -357,7 +384,7 @@ async def get_ip():
         response = requests.get('https://api.ipify.org?format=json')
         return response.json()
     except Exception as e:
-        logging.error(f"Error getting IP: {str(e)}")
+        log_error(f"Error getting IP: {str(e)}")
         return {"error": str(e)}
 
 @app.post("/analyze")
@@ -367,21 +394,22 @@ async def analyze_images(files: List[UploadFile] = File(...)):
         if not files:
             raise HTTPException(status_code=400, detail="No files provided")
 
+        log_info("Starting image analysis")
         results = []
         for file in files:
             try:
-                logging.info(f"[Analysis] Processing file: {file.filename}")
+                log_info(f"Processing file: {file.filename}")
                 # Save the uploaded file temporarily
                 with NamedTemporaryFile(delete=False, suffix=".jpg") as temp_file:
                     try:
                         content = await file.read()
                         if not content:
                             raise ValueError("Empty file uploaded")
-                        logging.info(f"[Analysis] File size: {len(content)} bytes")
+                        log_info(f"File size: {len(content)} bytes")
                         
                         temp_file.write(content)
                         temp_file.flush()
-                        logging.info(f"[Analysis] Saved to temp file: {temp_file.name}")
+                        log_info(f"Saved to temp file: {temp_file.name}")
 
                         # Process the image
                         try:
@@ -389,73 +417,75 @@ async def analyze_images(files: List[UploadFile] = File(...)):
                                 img_bytes = io.BytesIO()
                                 img.save(img_bytes, format='JPEG')
                                 img_bytes = img_bytes.getvalue()
-                                logging.info(f"[Analysis] Image processed, size: {len(img_bytes)} bytes")
+                                log_info(f"Image processed, size: {len(img_bytes)} bytes")
 
                             # Get Gemini analysis
                             try:
+                                log_info("Starting Gemini analysis")
                                 result = analyze_with_gemini(temp_file.name)
-                                logging.info(f"[Gemini] Analysis result: {result}")
-
                                 if not result:
                                     raise ValueError("Empty result from Gemini")
+                                log_info(f"Gemini analysis result: {result}")
 
                                 # Extract brand and category
                                 brand = result.get('brand', 'Unknown')
                                 category = result.get('category', 'Unknown')
                                 search_term = f"{brand} {category}".strip()
-                                logging.info(f"[Analysis] Search term: {search_term}")
+                                log_info(f"Search term: {search_term}")
 
                                 # Get trend data
                                 try:
+                                    log_info("Starting PyTrends data fetch")
                                     trend_result = get_trend_data(search_term)
-                                    logging.info(f"[Analysis] Trend data: {trend_result}")
+                                    log_info(f"PyTrends data: {trend_result}")
 
                                     # Combine results
                                     result.update(trend_result)
                                     results.append(result)
+                                    log_info("Successfully combined results")
                                 except Exception as e:
-                                    logging.error(f"[Analysis] Error getting trend data: {str(e)}", exc_info=True)
+                                    log_error("Error getting trend data", e)
                                     raise
 
                             except Exception as e:
-                                logging.error(f"[Analysis] Error in Gemini analysis: {str(e)}", exc_info=True)
+                                log_error("Error in Gemini analysis", e)
                                 raise
 
                         except Exception as e:
-                            logging.error(f"[Analysis] Error processing image: {str(e)}", exc_info=True)
+                            log_error("Error processing image", e)
                             raise
 
                     except Exception as e:
-                        logging.error(f"[Analysis] Error handling temp file: {str(e)}", exc_info=True)
+                        log_error("Error handling temp file", e)
                         raise
 
                     finally:
                         # Clean up temp file
                         try:
                             os.unlink(temp_file.name)
-                            logging.info(f"[Analysis] Cleaned up temp file: {temp_file.name}")
+                            log_info(f"Cleaned up temp file: {temp_file.name}")
                         except Exception as e:
-                            logging.error(f"[Analysis] Error deleting temp file: {str(e)}")
+                            log_error("Error deleting temp file", e)
 
             except Exception as e:
-                logging.error(f"[Analysis] Error processing file {file.filename}: {str(e)}", exc_info=True)
+                log_error(f"Error processing file {file.filename}", e)
                 raise HTTPException(status_code=500, detail=f"Error processing file {file.filename}: {str(e)}")
 
         if not results:
             raise HTTPException(status_code=500, detail="No results generated")
 
-        logging.info(f"[Analysis] Final results: {results[0]}")
+        log_info(f"Final results: {results[0]}")
         return results[0]
 
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"[Analysis] Critical error: {str(e)}", exc_info=True)
+        log_error("Critical error in analyze endpoint", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/upload")
 async def upload_file(files: List[UploadFile] = File(...)):
-    logging.info("Received file upload request")
+    log_info("Received file upload request")
     try:
         analyses = []
         
@@ -469,17 +499,17 @@ async def upload_file(files: List[UploadFile] = File(...)):
             
             # Get AI analysis for this image
             result = analyze_with_gemini("temp_image.jpg")
-            logging.info(f"Raw AI analysis: {result}")
+            log_info(f"Raw AI analysis: {result}")
             
             # Clean the JSON string
             cleaned_json = clean_json_string(result)
-            logging.info(f"Cleaned analysis: {cleaned_json}")
+            log_info(f"Cleaned analysis: {cleaned_json}")
             
             try:
                 analysisJson = json.loads(cleaned_json)
                 analyses.append(analysisJson)
             except json.JSONDecodeError as e:
-                logging.error(f"Failed to parse AI analysis: {str(e)}")
+                log_error(f"Failed to parse AI analysis: {str(e)}")
                 continue
         
         if not analyses:
@@ -513,7 +543,7 @@ async def upload_file(files: List[UploadFile] = File(...)):
             search_term = f"{brand} {category}"
             
             pytrends = TrendReq(hl='en-US')
-            logging.info(f"[PyTrends] Building payload with search term: {search_term}")
+            log_info(f"[PyTrends] Building payload with search term: {search_term}")
             try:
                 pytrends.build_payload(
                     kw_list=[search_term],
@@ -522,13 +552,13 @@ async def upload_file(files: List[UploadFile] = File(...)):
                     geo='US',
                     gprop=''
                 )
-                logging.info(f"[PyTrends] Payload built successfully for {search_term}")
+                log_info(f"[PyTrends] Payload built successfully for {search_term}")
             except Exception as e:
-                logging.error(f"[PyTrends] Error building payload: {str(e)}", exc_info=True)
+                log_error(f"[PyTrends] Error building payload: {str(e)}", exc_info=True)
                 # Try one more time with a different timeframe in production
                 if os.getenv('IS_PRODUCTION', 'False') == 'True':
                     try:
-                        logging.info("[PyTrends] Retrying with shorter timeframe")
+                        log_info("[PyTrends] Retrying with shorter timeframe")
                         pytrends.build_payload(
                             kw_list=[search_term],
                             cat=0,
@@ -536,27 +566,27 @@ async def upload_file(files: List[UploadFile] = File(...)):
                             geo='US',
                             gprop=''
                         )
-                        logging.info(f"[PyTrends] Second payload built successfully for {search_term}")
+                        log_info(f"[PyTrends] Second payload built successfully for {search_term}")
                     except Exception as e:
-                        logging.error(f"[PyTrends] Second attempt failed: {str(e)}", exc_info=True)
+                        log_error(f"[PyTrends] Second attempt failed: {str(e)}", exc_info=True)
                         raise
                 else:
                     raise
             
             # Get interest over time with error handling
-            logging.info("[PyTrends] Fetching interest over time data")
+            log_info("[PyTrends] Fetching interest over time data")
             try:
                 interest_over_time_df = pytrends.interest_over_time()
-                logging.info(f"[PyTrends] Interest over time data fetched: {interest_over_time_df.shape[0]} rows")
+                log_info(f"[PyTrends] Interest over time data fetched: {interest_over_time_df.shape[0]} rows")
                 if interest_over_time_df is None or interest_over_time_df.empty:
-                    logging.warning(f"[PyTrends] No trend data found for {search_term}")
+                    log_info(f"[PyTrends] No trend data found for {search_term}")
                     return {
                         'trend_data': [],
                         'keywords_data': []
                     }
-                logging.info(f"[PyTrends] Retrieved {len(interest_over_time_df)} data points")
+                log_info(f"[PyTrends] Retrieved {len(interest_over_time_df)} data points")
             except Exception as e:
-                logging.error(f"[PyTrends] Error getting interest over time: {str(e)}", exc_info=True)
+                log_error(f"[PyTrends] Error getting interest over time: {str(e)}", exc_info=True)
                 raise Exception(f"Failed to get trend data: {str(e)}")
             
             # Convert to list format
@@ -572,13 +602,13 @@ async def upload_file(files: List[UploadFile] = File(...)):
                             'volume': int(row[search_term])
                         })
                 except (ValueError, KeyError, TypeError) as e:
-                    logging.error(f"Error processing trend data row: {e}")
+                    log_error(f"Error processing trend data row: {e}")
                     continue
             
             if trend_data_list:
-                logging.info(f"Successfully processed {len(trend_data_list)} trend data points")
+                log_info(f"Successfully processed {len(trend_data_list)} trend data points")
             else:
-                logging.info("No valid trend data points")
+                log_info("No valid trend data points")
                 trend_data_list = []
             
             # Get related queries for keyword suggestions from PyTrends only
@@ -596,19 +626,19 @@ async def upload_file(files: List[UploadFile] = File(...)):
                                     'volume': int(row['value'])
                                 })
                             except (ValueError, KeyError, TypeError) as e:
-                                logging.error(f"Error processing keyword: {e}")
+                                log_error(f"Error processing keyword: {e}")
                                 continue
                         
                         if keywords:
-                            logging.info(f"Successfully found {len(keywords)} related keywords from PyTrends")
+                            log_info(f"Successfully found {len(keywords)} related keywords from PyTrends")
                         else:
-                            logging.info("No valid keywords found from PyTrends")
+                            log_info("No valid keywords found from PyTrends")
                     else:
-                        logging.info("No related queries data from PyTrends")
+                        log_info("No related queries data from PyTrends")
                 else:
-                    logging.info("No related queries result from PyTrends")
+                    log_info("No related queries result from PyTrends")
             except Exception as e:
-                logging.error(f"Error fetching related queries from PyTrends: {e}")
+                log_error(f"Error fetching related queries from PyTrends: {e}")
             
             return {
                 "message": "Analysis completed successfully",
@@ -618,7 +648,7 @@ async def upload_file(files: List[UploadFile] = File(...)):
             }
             
         except Exception as e:
-            logging.error(f"Error in pytrends request: {str(e)}")
+            log_error(f"Error in pytrends request: {str(e)}")
             return {
                 "message": "Analysis completed but trend data fetch failed",
                 "analysis": best_analysis,
@@ -627,12 +657,12 @@ async def upload_file(files: List[UploadFile] = File(...)):
             }
             
     except Exception as e:
-        logging.error(f"Error processing files: {str(e)}")
+        log_error(f"Error processing files: {str(e)}")
         return {"message": f"Error processing files: {str(e)}", "error": True}
 
 def cleanup():
     """Cleanup function to remove temporary files and close connections."""
-    logging.info("Cleaning up server resources...")
+    log_info("Cleaning up server resources...")
     try:
         # Remove only temporary image files
         if os.path.exists('temp_image.jpg'):
@@ -642,15 +672,15 @@ def cleanup():
         for proc in psutil.process_iter(['pid', 'name']):
             if proc.info['name'] == 'python.exe' and proc.pid != os.getpid():
                 if any('uvicorn' in cmd for cmd in proc.cmdline()):
-                    logging.info(f"Terminating previous uvicorn process: {proc.pid}")
+                    log_info(f"Terminating previous uvicorn process: {proc.pid}")
                     proc.terminate()
                     
     except Exception as e:
-        logging.error(f"Error during cleanup: {e}")
+        log_error(f"Error during cleanup: {e}")
 
 def signal_handler(signum, frame):
     """Handle termination signals gracefully."""
-    logging.info(f"Received signal {signum}")
+    log_info(f"Received signal {signum}")
     cleanup()
     sys.exit(0)
 
@@ -667,6 +697,6 @@ if __name__ == "__main__":
         port = int(os.getenv('PORT', 8080))
         uvicorn.run(app, host="0.0.0.0", port=port)
     except Exception as e:
-        logging.error(f"Error starting server: {e}")
+        log_error(f"Error starting server: {e}")
     finally:
         cleanup()
