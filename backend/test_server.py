@@ -283,29 +283,48 @@ def get_trend_data(search_term):
             'DNT': '1',
         }
 
-        # Use the provided proxy
-        proxy = "http://5.79.66.2:13010"
+        # Use the provided proxy with authentication if needed
+        proxy_host = "5.79.66.2"
+        proxy_port = "13010"
         proxy_config = {
-            'http': proxy,
-            'https': proxy
+            'http': f'http://{proxy_host}:{proxy_port}',
+            'https': f'http://{proxy_host}:{proxy_port}'
         }
         
-        log_info(f"[PyTrends] Using proxy: {proxy}")
+        log_info(f"[PyTrends] Using proxy: {proxy_host}:{proxy_port}")
         
-        # Initialize PyTrends with proxy settings
-        pytrends = TrendReq(
-            hl='en-US',
-            tz=360,
-            timeout=(30,30),
-            retries=2,
-            backoff_factor=1.5,
-            requests_args={
-                'verify': True,
-                'headers': custom_headers,
-                'allow_redirects': True,
-                'proxies': proxy_config
-            }
-        )
+        # Test proxy connection before using it
+        try:
+            log_info("[PyTrends] Testing proxy connection...")
+            test_response = requests.get('https://trends.google.com', 
+                                      proxies=proxy_config, 
+                                      timeout=10,
+                                      headers=custom_headers)
+            log_info(f"[PyTrends] Proxy test status code: {test_response.status_code}")
+        except Exception as e:
+            log_error("[PyTrends] Proxy test failed", e)
+            raise
+
+        try:
+            # Initialize PyTrends with proxy settings
+            log_info("[PyTrends] Initializing TrendReq with proxy settings...")
+            pytrends = TrendReq(
+                hl='en-US',
+                tz=360,
+                timeout=(30,30),
+                retries=2,
+                backoff_factor=1.5,
+                requests_args={
+                    'verify': True,
+                    'headers': custom_headers,
+                    'allow_redirects': True,
+                    'proxies': proxy_config
+                }
+            )
+            log_info("[PyTrends] TrendReq initialized successfully")
+        except Exception as e:
+            log_error("[PyTrends] Failed to initialize TrendReq", e)
+            raise
         
         # Try each term until we get data
         for term in terms:
@@ -316,15 +335,27 @@ def get_trend_data(search_term):
                 import time
                 time.sleep(1.5)
                 
-                pytrends.build_payload(
-                    kw_list=[term],
-                    cat=0,
-                    timeframe='today 12-m',
-                    geo='US'
-                )
+                try:
+                    log_info(f"[PyTrends] Building payload for term: {term}")
+                    pytrends.build_payload(
+                        kw_list=[term],
+                        cat=0,
+                        timeframe='today 12-m',
+                        geo='US'
+                    )
+                    log_info("[PyTrends] Payload built successfully")
+                except Exception as e:
+                    log_error("[PyTrends] Failed to build payload", e)
+                    continue
                 
                 # Get interest over time
-                interest_df = pytrends.interest_over_time()
+                try:
+                    log_info("[PyTrends] Fetching interest over time data...")
+                    interest_df = pytrends.interest_over_time()
+                    log_info("[PyTrends] Successfully fetched interest over time data")
+                except Exception as e:
+                    log_error("[PyTrends] Failed to fetch interest over time data", e)
+                    continue
                 
                 if interest_df is not None and not interest_df.empty:
                     log_info(f"[PyTrends] Found data for term: {term}")
@@ -337,16 +368,22 @@ def get_trend_data(search_term):
                     # Add delay before getting related queries
                     time.sleep(1.5)
                     
-                    # Get related queries
-                    related = pytrends.related_queries()
-                    keywords_data = []
-                    if related and term in related:
-                        top_df = related[term].get('top')
-                        if isinstance(top_df, pd.DataFrame) and not top_df.empty:
-                            keywords_data = [{
-                                'keyword': str(row['query']),
-                                'volume': int(row['value'])
-                            } for _, row in top_df.iterrows()]
+                    try:
+                        # Get related queries
+                        log_info("[PyTrends] Fetching related queries...")
+                        related = pytrends.related_queries()
+                        log_info("[PyTrends] Successfully fetched related queries")
+                        keywords_data = []
+                        if related and term in related:
+                            top_df = related[term].get('top')
+                            if isinstance(top_df, pd.DataFrame) and not top_df.empty:
+                                keywords_data = [{
+                                    'keyword': str(row['query']),
+                                    'volume': int(row['value'])
+                                } for _, row in top_df.iterrows()]
+                    except Exception as e:
+                        log_error("[PyTrends] Failed to fetch related queries", e)
+                        keywords_data = []
                     
                     log_info(f"[PyTrends] Got {len(trend_data)} trend points and {len(keywords_data)} keywords")
                     return {
@@ -358,7 +395,7 @@ def get_trend_data(search_term):
                     continue
                     
             except Exception as e:
-                log_error(f"[PyTrends] Error with term {term}: {str(e)}", exc_info=True)
+                log_error(f"[PyTrends] Error with term {term}", e)
                 continue
         
         # If we get here, no terms worked
@@ -366,7 +403,7 @@ def get_trend_data(search_term):
         return {'trend_data': [], 'keywords_data': []}
             
     except Exception as e:
-        log_error(f"[PyTrends] Critical error: {str(e)}", exc_info=True)
+        log_error("[PyTrends] Critical error", e)
         return {'trend_data': [], 'keywords_data': []}
 
 @app.get("/")
