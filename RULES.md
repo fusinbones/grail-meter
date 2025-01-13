@@ -50,6 +50,22 @@
    - Log all operations and their results
    - Include data counts and sizes
 
+## Critical Development Rules
+1. NEVER change working components or models that are already in production
+   - If a component or model is working in production, do not modify it unless explicitly requested
+   - Maintain consistency with existing implementation patterns
+   - Do not switch or suggest switching models/frameworks that are already working
+
+2. Maintain State Awareness
+   - Keep track of which models and components we're using
+   - Don't suggest changes to core functionality that's already working
+   - If unsure about something, check the existing code first before suggesting changes
+
+3. Version Control Best Practices
+   - Don't make unnecessary commits or changes
+   - Always verify the current implementation before suggesting modifications
+   - Keep track of deployment methods and environments
+
 ## Deployment Rules
 1. Always check deployment status after pushing changes
 2. Verify functionality in production environment
