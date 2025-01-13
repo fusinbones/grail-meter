@@ -392,16 +392,22 @@ function App() {
                       display: 'flex', 
                       justifyContent: 'center', 
                       alignItems: 'center', 
-                      mt: 3 
+                      mt: 3,
+                      width: '100%' 
                     }}
                   >
                     <Box 
                       sx={{ 
                         position: 'relative',
                         display: 'inline-flex',
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
                         border: '3px solid #1976d2',
                         borderRadius: '50%',
                         padding: '2rem',
+                        minWidth: '150px', 
+                        minHeight: '150px', 
+                        justifyContent: 'center' 
                       }}
                     >
                       <Typography 
@@ -410,6 +416,7 @@ function App() {
                         sx={{ 
                           fontWeight: 'bold',
                           color: '#1976d2',
+                          textAlign: 'center' 
                         }}
                       >
                         ${analysisResult.averagePrice.toFixed(2)}
@@ -418,11 +425,11 @@ function App() {
                         variant="subtitle1" 
                         sx={{ 
                           position: 'absolute',
-                          bottom: '0.5rem',
+                          bottom: '1rem', 
                           width: '100%',
                           textAlign: 'center',
                           color: '#1976d2',
-                          fontWeight: 'bold',
+                          fontWeight: 'bold'
                         }}
                       >
                         Average Price
