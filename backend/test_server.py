@@ -133,9 +133,9 @@ def analyze_with_gemini(image_path: str) -> Dict[str, Union[str, int, List[str]]
                 img = img.convert('RGB')
                 log_info("Converted image to RGB mode")
 
-            # Use the new model name
-            model = genai.GenerativeModel('gemini-pro-vision')
-            log_info("Created model instance with gemini-pro-vision")
+            # Use the correct model name
+            model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+            log_info("Created model instance with models/gemini-1.5-flash-latest")
             
             # Prepare the prompt
             prompt = """Analyze this streetwear image in detail and provide a JSON response with the following fields:
@@ -381,7 +381,7 @@ def analyze_images(image_path):
         img = Image.open(image_path)
         
         # First prompt for product details
-        model = genai.GenerativeModel('gemini-pro-vision')
+        model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
         initial_prompt = """Analyze this streetwear/fashion item and provide details in this exact format:
         {
             "product": {
@@ -570,7 +570,7 @@ async def analyze_image_endpoint(files: list[UploadFile]):
                 raise HTTPException(status_code=400, detail="Could not load any images")
             
             # Create the prompt considering all images
-            model = genai.GenerativeModel('gemini-pro-vision')
+            model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
             prompt = """Analyze these images of the same fashion/streetwear item. The images may show different angles, tags, or labels.
             Consider ALL images together to provide the most accurate details in this exact format:
             {
