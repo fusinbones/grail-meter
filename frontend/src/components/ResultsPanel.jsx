@@ -94,6 +94,82 @@ const ResultsPanel = ({ results }) => {
           </Box>
         </Box>
       </Paper>
+
+      {/* Market Analysis Box */}
+      {results.marketMetrics && (
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h5" gutterBottom>
+            Market Analysis
+          </Typography>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center', mb: 3 }}>
+            {/* Sell Through Rate Circle */}
+            <Box sx={{ textAlign: 'center' }}>
+              <Box sx={{ 
+                position: 'relative',
+                display: 'inline-flex',
+                border: '3px solid #4CAF50',
+                borderRadius: '50%',
+                padding: '2rem',
+              }}>
+                <Typography 
+                  variant="h4" 
+                  component="div" 
+                  sx={{ 
+                    fontWeight: 'bold',
+                    color: '#4CAF50',
+                  }}
+                >
+                  {results.marketMetrics.sellThroughRate}%
+                </Typography>
+                <Typography 
+                  variant="subtitle1" 
+                  sx={{ 
+                    position: 'absolute',
+                    bottom: '0.5rem',
+                    width: '100%',
+                    textAlign: 'center',
+                    color: '#4CAF50',
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Sell Rate
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Market Stats */}
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" color="text.secondary">Market Stats</Typography>
+              <Typography><strong>Sold (90d):</strong> {results.marketMetrics.soldCount}</Typography>
+              <Typography><strong>Available:</strong> {results.marketMetrics.availableCount}</Typography>
+              <Typography><strong>Avg Sold:</strong> ${results.marketMetrics.averageSoldPrice.toFixed(2)}</Typography>
+            </Box>
+          </Box>
+
+          {/* Recent Sales */}
+          <Typography variant="h6" sx={{ mb: 1 }}>Recent Sales</Typography>
+          <List>
+            {results.marketMetrics.recentSales.map((sale, index) => (
+              <ListItem key={index} divider={index !== results.marketMetrics.recentSales.length - 1}>
+                <ListItemText
+                  primary={sale.title}
+                  secondary={
+                    <>
+                      <Typography component="span" sx={{ display: 'block' }}>
+                        Price: ${sale.price.toFixed(2)}
+                      </Typography>
+                      <Typography component="span" sx={{ display: 'block' }}>
+                        Sold: {sale.date}
+                      </Typography>
+                    </>
+                  }
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
+      )}
     </Box>
   );
 };
