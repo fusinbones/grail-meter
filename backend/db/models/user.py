@@ -4,6 +4,7 @@ This model is completely isolated and not connected to the main application.
 """
 from sqlalchemy import Column, Integer, String, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from ..database import Base
 
 class User(Base):
@@ -16,3 +17,6 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationship to SearchHistory
+    searches = relationship("SearchHistory", back_populates="user")
