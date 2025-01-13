@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress, Button, IconButton, Link } from '@mui/material';
+import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress, Button, IconButton, Link, List, ListItem, ListItemText } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { DropzoneArea } from 'mui-file-dropzone';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
@@ -357,80 +357,82 @@ function App() {
           {/* eBay Listings */}
           <Grid item xs={12} md={6}>
             <StyledPaper>
-              <div className="glass-card">
-                <ResponsiveTypography variant="h6" sx={{ color: '#4A4C58', mb: 2, fontWeight: 600 }}>
-                  Similar eBay Listings
-                </ResponsiveTypography>
-                {analysisResult.ebayListings && analysisResult.ebayListings.map((listing, index) => (
+              <Typography variant="h6" gutterBottom>
+                eBay Market Data
+              </Typography>
+              {analysisResult && (
+                <Box sx={{ mt: 2 }}>
+                  <List>
+                    {analysisResult.ebayListings.map((listing, index) => (
+                      <ListItem key={index} divider={index !== analysisResult.ebayListings.length - 1}>
+                        <ListItemText
+                          primary={
+                            <Link href={listing.url} target="_blank" rel="noopener noreferrer" sx={{ color: '#1976d2' }}>
+                              {listing.title}
+                            </Link>
+                          }
+                          secondary={
+                            <>
+                              <Typography component="span" sx={{ display: 'block' }}>
+                                Price: ${listing.price.toFixed(2)}
+                              </Typography>
+                              <Typography component="span" sx={{ display: 'block' }}>
+                                Condition: {listing.condition}
+                              </Typography>
+                            </>
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+
+                  {/* Average Price with Circle */}
                   <Box 
-                    key={index} 
                     sx={{ 
-                      mb: 2, 
-                      p: 2, 
-                      borderRadius: 1,
-                      backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                      '&:hover': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      }
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      mt: 3 
                     }}
                   >
-                    {isValidEbayUrl(listing.url) ? (
-                      <Link 
-                        href={listing.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <Box 
+                      sx={{ 
+                        position: 'relative',
+                        display: 'inline-flex',
+                        border: '3px solid #1976d2',
+                        borderRadius: '50%',
+                        padding: '2rem',
+                      }}
+                    >
+                      <Typography 
+                        variant="h4" 
+                        component="div" 
                         sx={{ 
-                          textDecoration: 'none',
-                          color: 'inherit',
-                          '&:hover': {
-                            textDecoration: 'underline'
-                          }
+                          fontWeight: 'bold',
+                          color: '#1976d2',
                         }}
                       >
-                        <ResponsiveTypography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                          {listing.title}
-                        </ResponsiveTypography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, flexWrap: 'wrap', gap: 1 }}>
-                          <ResponsiveTypography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                            ${listing.price}
-                          </ResponsiveTypography>
-                          <ResponsiveTypography variant="body2" color="text.secondary">
-                            {listing.condition}
-                          </ResponsiveTypography>
-                        </Box>
-                      </Link>
-                    ) : (
-                      <Box>
-                        <ResponsiveTypography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                          {listing.title}
-                        </ResponsiveTypography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, flexWrap: 'wrap', gap: 1 }}>
-                          <ResponsiveTypography variant="body2" color="primary.main" sx={{ fontWeight: 600 }}>
-                            ${listing.price}
-                          </ResponsiveTypography>
-                          <ResponsiveTypography variant="body2" color="text.secondary">
-                            {listing.condition}
-                          </ResponsiveTypography>
-                        </Box>
-                      </Box>
-                    )}
+                        ${analysisResult.averagePrice.toFixed(2)}
+                      </Typography>
+                      <Typography 
+                        variant="subtitle1" 
+                        sx={{ 
+                          position: 'absolute',
+                          bottom: '0.5rem',
+                          width: '100%',
+                          textAlign: 'center',
+                          color: '#1976d2',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        Average Price
+                      </Typography>
+                    </Box>
                   </Box>
-                ))}
-                {analysisResult.averagePrice > 0 && (
-                  <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid rgba(0, 0, 0, 0.1)' }}>
-                    <ResponsiveTypography variant="h6" sx={{ color: '#4A4C58', fontWeight: 600 }}>
-                      Average Price: ${analysisResult.averagePrice}
-                    </ResponsiveTypography>
-                  </Box>
-                )}
-              </div>
+                </Box>
+              )}
             </StyledPaper>
           </Grid>
-
-          {/* Results Section */}
-          {analysisResult && (
-            <ResultsPanel results={analysisResult} />
-          )}
 
           {/* Keyword Research Coming Soon */}
           <Grid item xs={12} md={6}>
