@@ -19,6 +19,15 @@
 3. Keep error handling robust and informative
 4. Maintain clean separation of concerns between components
 
+## Code Modification Rules
+1. NEVER modify any working part of the code
+2. When adding new features:
+   - Only add new code in designated areas
+   - Do not touch or modify existing working code
+   - If unsure, ask before modifying any existing code
+3. Keep all working functionality intact
+4. Test new additions in isolation
+
 ## API Integration Rules
 1. Gemini:
    - Proper image analysis
