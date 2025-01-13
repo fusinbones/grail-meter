@@ -3,16 +3,13 @@
 ## Data Rules
 1. NEVER use synthetic or fake data
 2. Always use real data from:
-   - Google Trends (PyTrends) for search volumes and trends
    - Gemini API for image analysis
-3. All search volumes must show actual numbers from PyTrends
-4. Trend graph must always display real historical data
-5. ONLY focus on the Vercel and Railway deployments
+3. ONLY focus on the Vercel and Railway deployments
 
 ## UI/UX Rules
 1. Grid layout must be responsive:
-   - Graph on left (md={8})
-   - Search volumes on right (md={4})
+   - Preview image on left (md={6})
+   - Analysis results on right (md={6})
 2. All components must be mobile responsive
 3. Camera functionality must work on all devices
 
@@ -23,32 +20,10 @@
 4. Maintain clean separation of concerns between components
 
 ## API Integration Rules
-1. PyTrends:
-   - Use actual search volumes
-   - Include historical trend data
-   - Show related keywords with real volumes
-2. Gemini:
+1. Gemini:
    - Proper image analysis
    - Accurate brand and category detection
-
-## PyTrends Integration Rules
-1. Always use proper error handling:
-   - Try/catch around each PyTrends operation
-   - Validate all returned data
-   - Log errors with full stack traces
-2. Configuration requirements:
-   - Minimum 30 second timeout
-   - At least 3 retries
-   - Use backoff between retries
-   - Focus on US market for reliable data
-3. Data quality:
-   - Never return synthetic data
-   - Validate all data types before conversion
-   - Handle missing data gracefully
-4. Logging requirements:
-   - Use [PyTrends] prefix
-   - Log all operations and their results
-   - Include data counts and sizes
+   - Support for multiple image analysis
 
 ## Critical Development Rules
 1. NEVER change working components or models that are already in production
