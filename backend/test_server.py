@@ -71,14 +71,6 @@ try:
 except Exception as e:
     log_error(f"Failed to configure Gemini API: {str(e)}")
 
-# Configure OpenAI
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-if not OPENAI_API_KEY:
-    log_error("OPENAI_API_KEY not found in environment variables!")
-else:
-    log_info("OPENAI_API_KEY found in environment")
-    openai.api_key = OPENAI_API_KEY
-
 # Health check endpoint
 @app.get("/health")
 async def health_check():
@@ -142,8 +134,8 @@ def analyze_with_gemini(image_path: str) -> Dict[str, Union[str, int, List[str]]
                 log_info("Converted image to RGB mode")
 
             # Use the new model name
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            log_info("Created model instance with gemini-1.5-flash")
+            model = genai.GenerativeModel('gemini-pro-vision')
+            log_info("Created model instance with gemini-pro-vision")
             
             # Prepare the prompt
             prompt = """Analyze this streetwear image in detail and provide a JSON response with the following fields:
@@ -165,7 +157,7 @@ def analyze_with_gemini(image_path: str) -> Dict[str, Union[str, int, List[str]]
                 }
             }
             Provide only valid JSON, no additional text."""
-
+            
             # Generate the analysis
             log_info("Sending request to Gemini API...")
             response = model.generate_content([prompt, img])
@@ -389,7 +381,7 @@ def analyze_images(image_path):
         img = Image.open(image_path)
         
         # First prompt for product details
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro-vision')
         initial_prompt = """Analyze this streetwear/fashion item and provide details in this exact format:
         {
             "product": {
@@ -540,19 +532,92 @@ def get_ebay_listings(query):
         }
 
 @app.post("/analyze")
-async def analyze_image_endpoint(file: UploadFile):
+async def analyze_image_endpoint(files: list[UploadFile]):
     try:
-        # Process and save the uploaded file
-        temp_path = await process_uploaded_file(file)
-        
-        # Analyze the image using our new function
-        result = analyze_images(temp_path)
-        
-        # Clean up the temporary file
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
+        # Create temp directory for images
+        with tempfile.TemporaryDirectory() as temp_dir:
+            image_paths = []
             
-        return result
+            # Save all uploaded files
+            for file in files:
+                if not file.filename:
+                    continue
+                    
+                file_path = os.path.join(temp_dir, file.filename)
+                with open(file_path, "wb") as buffer:
+                    buffer.write(await file.read())
+                image_paths.append(file_path)
+                
+            if not image_paths:
+                raise HTTPException(status_code=400, detail="No valid images provided")
+                
+            # Analyze the first image as before, but use additional images for context
+            main_image = image_paths[0]
+            additional_images = image_paths[1:]
+            
+            # Load all images
+            images = []
+            for path in [main_image] + additional_images:
+                try:
+                    with Image.open(path) as img:
+                        img_bytes = io.BytesIO()
+                        img.save(img_bytes, format='JPEG')
+                        images.append(img_bytes.getvalue())
+                except Exception as e:
+                    log_error(f"Error loading image {path}: {str(e)}")
+            
+            if not images:
+                raise HTTPException(status_code=400, detail="Could not load any images")
+            
+            # Create the prompt considering all images
+            model = genai.GenerativeModel('gemini-pro-vision')
+            prompt = """Analyze these images of the same fashion/streetwear item. The images may show different angles, tags, or labels.
+            Consider ALL images together to provide the most accurate details in this exact format:
+            {
+                "product": {
+                    "title": "Specific product name with brand (use brand from label if visible)",
+                    "color": "Main colors (look at all angles)",
+                    "category": "Type of clothing (e.g., hoodie, t-shirt, sneakers)",
+                    "gender": "Men/Women/Unisex (check label if shown)",
+                    "size": "Size from label if visible, otherwise 'Regular'",
+                    "material": "Material from label if visible, otherwise main visible material"
+                },
+                "keywords": [
+                    "5 most relevant keywords for marketplace listings"
+                ],
+                "longTailKeywords": [
+                    "5 detailed search phrases that combine brand, style, and features"
+                ]
+            }
+            Be as accurate as possible by cross-referencing all images. If you see a label or tag, that information takes precedence.
+            Provide ONLY valid JSON, no additional text."""
+            
+            log_info("Sending images to Gemini API...")
+            response = model.generate_content([
+                prompt, 
+                *[{'mime_type': 'image/jpeg', 'data': img} for img in images]
+            ])
+            
+            if not response or not response.text:
+                raise HTTPException(status_code=500, detail="Empty response from Gemini API")
+            
+            # Clean and parse the response
+            cleaned_json = clean_json_string(response.text)
+            result = json.loads(cleaned_json)
+            
+            # Get eBay listings based on the product title
+            log_info(f"Getting eBay listings for: {result['product']['title']}")
+            ebay_result = get_ebay_listings(result['product']['title'])
+            
+            # Add eBay data and SEO score to final result
+            result["ebayListings"] = ebay_result["listings"]
+            result["averagePrice"] = ebay_result["averagePrice"]
+            result["seo"] = {
+                "condition": random.randint(7, 10)
+            }
+            
+            return result
+            
     except Exception as e:
         log_error(f"Error in analyze_image_endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

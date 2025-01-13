@@ -4,6 +4,8 @@ import { styled } from '@mui/material/styles';
 import { DropzoneArea } from 'mui-file-dropzone';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloseIcon from '@mui/icons-material/Close';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import './App.css';
 import ResultsPanel from './components/ResultsPanel';
 
@@ -49,11 +51,18 @@ const ImageContainer = styled(Box)(({ theme }) => `
   border-radius: 16px;
   background: #F8F9FD;
   border: 1px solid #E8EAF2;
+  position: relative;
   & img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
     border-radius: 12px;
+  }
+  & .MuiIconButton-root {
+    background-color: rgba(255, 255, 255, 0.8);
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.95);
+    }
   }
   @media (max-width: 600px) {
     height: 300px;
@@ -97,11 +106,13 @@ const ResponsiveTypography = styled(Typography)(({ theme }) => ({
 }));
 
 function App() {
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [imageUrls, setImageUrls] = useState([]);  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);  
   const [imageUrl, setImageUrl] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -130,21 +141,19 @@ function App() {
 
   const captureImage = async () => {
     try {
-      const video = videoRef.current;
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
       
-      // Convert canvas to blob
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
       const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
       
-      setSelectedImage(file);
+      setSelectedImages([file]);
+      setImageUrls([URL.createObjectURL(file)]);
       setImageUrl(URL.createObjectURL(file));
       stopCamera();
-      await analyzeImage(file);
+      await analyzeImages([file]);
     } catch (err) {
       console.error('Error capturing image:', err);
       setError('Failed to capture image. Please try again.');
@@ -153,19 +162,31 @@ function App() {
 
   const handleImageChange = async (files) => {
     if (files && files.length > 0) {
-      const file = files[0];
-      setSelectedImage(file);
-      setImageUrl(URL.createObjectURL(file));
-      await analyzeImage(file);
+      setSelectedImages(files);
+      const urls = files.map(file => URL.createObjectURL(file));
+      setImageUrls(urls);
+      setImageUrl(urls[0]);
+      setCurrentImageIndex(0);
+      await analyzeImages(files);
     }
   };
 
-  const analyzeImage = async (file) => {
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % imageUrls.length);
+  };
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + imageUrls.length) % imageUrls.length);
+  };
+
+  const analyzeImages = async (files) => {
     setLoading(true);
     setError(null);
     try {
       const formData = new FormData();
-      formData.append('file', file);
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
 
       const response = await fetch('https://grail-meter-production.up.railway.app/analyze', {
         method: 'POST',
@@ -177,10 +198,10 @@ function App() {
       }
 
       const result = await response.json();
-      console.log('Raw analysis result:', JSON.stringify(result, null, 2));  // More detailed logging
+      console.log('Raw analysis result:', JSON.stringify(result, null, 2));
       setAnalysisResult(result);
     } catch (err) {
-      console.error('Error:', err);  // Debug log
+      console.error('Error:', err);
       setError('Error analyzing image. Please try again.');
     } finally {
       setLoading(false);
@@ -213,7 +234,7 @@ function App() {
         Grail Meter
       </ResponsiveTypography>
 
-      {!selectedImage && !showCamera && (
+      {!selectedImages.length && !showCamera && (
         <Grid container spacing={2} justifyContent="center">
           <Grid item xs={12} md={6}>
             <StyledPaper>
@@ -284,15 +305,36 @@ function App() {
         </Box>
       )}
 
-      {selectedImage && !loading && analysisResult && (
+      {selectedImages.length && !loading && analysisResult && (
         <Grid container spacing={3}>
           {/* Image Preview */}
           <Grid item xs={12} md={6}>
             <StyledPaper>
               <div className="glass-card">
                 <ImageContainer>
-                  <img src={imageUrl} alt="Selected" />
+                  {imageUrls.length > 1 && (
+                    <IconButton 
+                      onClick={handlePrevImage}
+                      sx={{ position: 'absolute', left: 8, zIndex: 2 }}
+                    >
+                      <NavigateBeforeIcon />
+                    </IconButton>
+                  )}
+                  <img src={imageUrls[currentImageIndex]} alt={`Selected ${currentImageIndex + 1}/${imageUrls.length}`} />
+                  {imageUrls.length > 1 && (
+                    <IconButton 
+                      onClick={handleNextImage}
+                      sx={{ position: 'absolute', right: 8, zIndex: 2 }}
+                    >
+                      <NavigateNextIcon />
+                    </IconButton>
+                  )}
                 </ImageContainer>
+                {imageUrls.length > 1 && (
+                  <Typography variant="caption" align="center" sx={{ mt: 1, display: 'block' }}>
+                    Image {currentImageIndex + 1} of {imageUrls.length}
+                  </Typography>
+                )}
               </div>
             </StyledPaper>
           </Grid>
@@ -372,14 +414,14 @@ function App() {
                             </Link>
                           }
                           secondary={
-                            <>
+                            < >
                               <Typography component="span" sx={{ display: 'block' }}>
                                 Price: ${listing.price.toFixed(2)}
                               </Typography>
                               <Typography component="span" sx={{ display: 'block' }}>
                                 Condition: {listing.condition}
                               </Typography>
-                            </>
+                            </ >
                           }
                         />
                       </ListItem>
