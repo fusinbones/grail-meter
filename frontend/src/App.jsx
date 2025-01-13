@@ -5,6 +5,7 @@ import { DropzoneArea } from 'mui-file-dropzone';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import './App.css';
+import ResultsPanel from './components/ResultsPanel';
 
 const StyledPaper = styled(Paper)(({ theme }) => ({
   height: '100%',
@@ -425,6 +426,11 @@ function App() {
               </div>
             </StyledPaper>
           </Grid>
+
+          {/* Results Section */}
+          {analysisResult && (
+            <ResultsPanel results={analysisResult} />
+          )}
 
           {/* Keyword Research Coming Soon */}
           <Grid item xs={12} md={6}>

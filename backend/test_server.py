@@ -482,7 +482,7 @@ def get_ebay_listings(query):
         
         # Find all listing items
         items = soup.find_all('div', class_='s-item__info')
-        for item in items[:5]:  # Get top 5 listings
+        for item in items[:10]:  # Get top 10 listings
             try:
                 title_elem = item.find('div', class_='s-item__title')
                 price_elem = item.find('span', class_='s-item__price')
