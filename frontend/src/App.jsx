@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress, Button, IconButton, Link, List, ListItem, ListItemText } from '@mui/material';
+import { Container, Paper, Grid, Typography, Box, Chip, CircularProgress, Button, IconButton, Link, List, ListItem, ListItemText, ImageList, ImageListItem } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { DropzoneArea } from 'mui-file-dropzone';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import './App.css';
@@ -105,17 +106,86 @@ const ResponsiveTypography = styled(Typography)(({ theme }) => ({
   width: '100%',
 }));
 
+const ImagePreviewArea = styled(Box)(({ theme }) => ({
+  width: '100%',
+  padding: theme.spacing(2),
+  background: 'rgba(255, 255, 255, 0.9)',
+  backdropFilter: 'blur(10px)',
+  borderRadius: '16px',
+  boxShadow: '0 4px 30px rgba(0, 0, 0, 0.1)',
+  border: '1px solid rgba(255, 255, 255, 0.3)',
+  marginBottom: theme.spacing(2),
+  transition: 'all 0.3s ease-in-out'
+}));
+
+const PreviewImage = styled('img')({
+  width: '100%',
+  height: '150px',
+  objectFit: 'cover',
+  borderRadius: '8px',
+  transition: 'transform 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'scale(1.02)'
+  }
+});
+
+const RemoveButton = styled(IconButton)(({ theme }) => ({
+  position: 'absolute',
+  top: 4,
+  right: 4,
+  backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  '&:hover': {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    transform: 'scale(1.1)'
+  },
+  transition: 'all 0.2s ease-in-out'
+}));
+
 function App() {
   const [selectedImages, setSelectedImages] = useState([]);
-  const [imageUrls, setImageUrls] = useState([]);  
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);  
-  const [imageUrl, setImageUrl] = useState(null);
+  const [imageUrls, setImageUrls] = useState([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [showCamera, setShowCamera] = useState(false);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+
+  const handleImageChange = async (files) => {
+    if (files && files.length > 0) {
+      const newImages = [...selectedImages, ...files];
+      setSelectedImages(newImages);
+      const newUrls = files.map(file => URL.createObjectURL(file));
+      setImageUrls([...imageUrls, ...newUrls]);
+    }
+  };
+
+  const handleRemoveImage = (index) => {
+    const newImages = selectedImages.filter((_, i) => i !== index);
+    const newUrls = imageUrls.filter((_, i) => i !== index);
+    URL.revokeObjectURL(imageUrls[index]); // Clean up object URL
+    setSelectedImages(newImages);
+    setImageUrls(newUrls);
+    if (currentImageIndex >= newImages.length) {
+      setCurrentImageIndex(Math.max(0, newImages.length - 1));
+    }
+  };
+
+  const handleAnalyzeImages = async () => {
+    if (selectedImages.length === 0) {
+      setError('Please select at least one image to analyze');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await analyzeImages(selectedImages);
+    } catch (err) {
+      setError('Failed to analyze images. Please try again.');
+    }
+    setLoading(false);
+  };
 
   const startCamera = async () => {
     try {
@@ -149,25 +219,12 @@ function App() {
       const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
       const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
       
-      setSelectedImages([file]);
-      setImageUrls([URL.createObjectURL(file)]);
-      setImageUrl(URL.createObjectURL(file));
+      setSelectedImages([...selectedImages, file]);
+      setImageUrls([...imageUrls, URL.createObjectURL(file)]);
       stopCamera();
-      await analyzeImages([file]);
     } catch (err) {
       console.error('Error capturing image:', err);
       setError('Failed to capture image. Please try again.');
-    }
-  };
-
-  const handleImageChange = async (files) => {
-    if (files && files.length > 0) {
-      setSelectedImages(files);
-      const urls = files.map(file => URL.createObjectURL(file));
-      setImageUrls(urls);
-      setImageUrl(urls[0]);
-      setCurrentImageIndex(0);
-      await analyzeImages(files);
     }
   };
 
@@ -234,41 +291,87 @@ function App() {
         Grail Meter
       </ResponsiveTypography>
 
-      {!selectedImages.length && !showCamera && (
-        <Grid container spacing={2} justifyContent="center">
-          <Grid item xs={12} md={6}>
-            <StyledPaper>
-              <div className="glass-card">
-                <DropzoneArea
-                  acceptedFiles={['image/*']}
-                  dropzoneText="Drag and drop an image here or click"
-                  onChange={handleImageChange}
-                  maxFileSize={5000000}
-                  showFileNames
-                  showPreviewsInDropzone={false}
-                  useChipsForPreview
-                  classes={{
-                    root: 'dropzone-root',
-                    text: 'dropzone-text'
-                  }}
-                />
-              </div>
-            </StyledPaper>
+      {!showCamera && (
+        <>
+          <Grid container spacing={2} justifyContent="center">
+            <Grid item xs={12} md={6}>
+              <StyledPaper>
+                <div className="glass-card">
+                  <DropzoneArea
+                    acceptedFiles={['image/*']}
+                    dropzoneText="Drag and drop an image here or click"
+                    onChange={handleImageChange}
+                    maxFileSize={5000000}
+                    showFileNames
+                    showPreviewsInDropzone={false}
+                    useChipsForPreview
+                  />
+                </div>
+              </StyledPaper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <StyledPaper>
+                <div className="glass-card" style={{ justifyContent: 'center', alignItems: 'center' }}>
+                  <StyledButton
+                    variant="contained"
+                    startIcon={<CameraAltIcon />}
+                    onClick={startCamera}
+                  >
+                    Take Photo
+                  </StyledButton>
+                </div>
+              </StyledPaper>
+            </Grid>
           </Grid>
-          <Grid item xs={12} md={6}>
-            <StyledPaper>
-              <div className="glass-card" style={{ justifyContent: 'center', alignItems: 'center' }}>
+
+          {selectedImages.length > 0 && !loading && !analysisResult && (
+            <ImagePreviewArea>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 500, color: '#4A4C58' }}>
+                Selected Images ({selectedImages.length})
+              </Typography>
+              <ImageList 
+                cols={{ xs: 2, sm: 3, md: 4 }} 
+                gap={16}
+                sx={{ 
+                  overflow: 'hidden',
+                  m: 0 
+                }}
+              >
+                {imageUrls.map((url, index) => (
+                  <ImageListItem 
+                    key={index}
+                    sx={{ 
+                      overflow: 'hidden',
+                      position: 'relative',
+                      '&:hover img': {
+                        transform: 'scale(1.02)'
+                      }
+                    }}
+                  >
+                    <PreviewImage src={url} alt={`Selected ${index + 1}`} />
+                    <RemoveButton
+                      size="small"
+                      onClick={() => handleRemoveImage(index)}
+                      aria-label="remove image"
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </RemoveButton>
+                  </ImageListItem>
+                ))}
+              </ImageList>
+              <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
                 <StyledButton
                   variant="contained"
-                  startIcon={<CameraAltIcon />}
-                  onClick={startCamera}
+                  onClick={handleAnalyzeImages}
+                  disabled={loading}
+                  sx={{ minWidth: 200 }}
                 >
-                  Take Photo
+                  Analyze {selectedImages.length} {selectedImages.length === 1 ? 'Image' : 'Images'}
                 </StyledButton>
-              </div>
-            </StyledPaper>
-          </Grid>
-        </Grid>
+              </Box>
+            </ImagePreviewArea>
+          )}
+        </>
       )}
 
       {showCamera && (
